@@ -19,9 +19,16 @@
        });
      }
  
-     // Convert file to base64
-     const arrayBuffer = await file.arrayBuffer();
-     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    // Convert file to base64 in chunks to avoid stack overflow
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
      const mimeType = file.type || 'image/png';
  
      // Call Lovable AI Gateway for OCR
