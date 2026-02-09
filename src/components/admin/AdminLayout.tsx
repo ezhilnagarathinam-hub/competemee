@@ -25,9 +25,9 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
       <AdminSidebar />
-      <main ref={mainRef} className="ml-64 p-8">
+      <main ref={mainRef} className="flex-1 ml-64 p-8 overflow-y-auto">
         <Outlet />
       </main>
     </div>
