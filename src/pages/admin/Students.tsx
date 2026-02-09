@@ -117,7 +117,8 @@ export default function Students() {
         toast.success('Player enrolled! Credentials auto-generated.');
       }
 
-      if (studentId && selectedCompetitions.length > 0) {
+      if (studentId) {
+        // Always clear existing assignments when editing
         if (editingId) {
           await supabase
             .from('student_competitions')
@@ -125,12 +126,15 @@ export default function Students() {
             .eq('student_id', studentId);
         }
 
-        const assignments = selectedCompetitions.map(compId => ({
-          student_id: studentId,
-          competition_id: compId,
-        }));
+        // Insert new assignments if any selected
+        if (selectedCompetitions.length > 0) {
+          const assignments = selectedCompetitions.map(compId => ({
+            student_id: studentId,
+            competition_id: compId,
+          }));
 
-        await supabase.from('student_competitions').insert(assignments);
+          await supabase.from('student_competitions').insert(assignments);
+        }
       }
       
       setDialogOpen(false);

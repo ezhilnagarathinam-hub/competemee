@@ -28,25 +28,32 @@ export default function StudentDashboard() {
 
   async function fetchCompetitions() {
     try {
-      const { data: comps, error: compError } = await supabase
-        .from('competitions')
-        .select('*')
-        .eq('is_active', true)
-        .order('date', { ascending: true });
-
-      if (compError) throw compError;
-
-      const { data: statuses, error: statusError } = await supabase
+      // Only fetch competitions the student is assigned to
+      const { data: enrollments, error: enrollError } = await supabase
         .from('student_competitions')
-        .select('*')
+        .select(`
+          *,
+          competitions!inner(*)
+        `)
         .eq('student_id', studentId);
 
-      if (statusError) throw statusError;
+      if (enrollError) throw enrollError;
 
-      const compsWithStatus: CompetitionWithStatus[] = ((comps as Competition[]) || []).map((comp) => ({
-        ...comp,
-        studentStatus: (statuses as StudentCompetition[])?.find((s) => s.competition_id === comp.id),
-      }));
+      const compsWithStatus: CompetitionWithStatus[] = ((enrollments || []) as any[])
+        .filter((e) => e.competitions?.is_active)
+        .map((e) => ({
+          ...(e.competitions as Competition),
+          studentStatus: {
+            id: e.id,
+            student_id: e.student_id,
+            competition_id: e.competition_id,
+            has_started: e.has_started,
+            has_submitted: e.has_submitted,
+            started_at: e.started_at,
+            submitted_at: e.submitted_at,
+            total_marks: e.total_marks,
+          } as StudentCompetition,
+        }));
 
       setCompetitions(compsWithStatus);
     } catch (error) {
