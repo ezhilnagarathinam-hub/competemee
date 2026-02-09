@@ -195,6 +195,12 @@ export default function Questions() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, WEBP). Word documents and PDFs are not supported.');
+      return;
+    }
+
     setOcrProcessing(true);
     try {
       const formDataUpload = new FormData();
@@ -303,11 +309,11 @@ export default function Questions() {
                       <FileImage className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                       <p className="text-sm text-muted-foreground mb-4">
                         Drag & drop or click to upload<br />
-                        <span className="text-xs">PDF, JPG, PNG, Word documents</span>
+                        <span className="text-xs">JPG, PNG, WEBP images only</span>
                       </p>
                       <Input
                         type="file"
-                        accept="image/*,.pdf,.doc,.docx"
+                        accept="image/*"
                         onChange={handleOcrUpload}
                         className="cursor-pointer"
                       />

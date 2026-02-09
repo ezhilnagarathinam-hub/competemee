@@ -12,12 +12,20 @@
      const formData = await req.formData();
      const file = formData.get('file') as File;
      
-     if (!file) {
-       return new Response(JSON.stringify({ error: 'No file provided' }), {
-         status: 400,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
+      if (!file) {
+        return new Response(JSON.stringify({ error: 'No file provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Validate file is an image
+      if (!file.type.startsWith('image/')) {
+        return new Response(JSON.stringify({ error: 'Only image files are supported (JPG, PNG, WEBP). Please upload a photo of the question paper.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
  
     // Convert file to base64 in chunks to avoid stack overflow
     const arrayBuffer = await file.arrayBuffer();
