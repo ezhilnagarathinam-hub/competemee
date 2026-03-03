@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, ClipboardList, Zap } from 'lucide-react';
+import { Trophy, Medal, Award, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -83,8 +83,8 @@ export default function Results() {
 
       const entries: LeaderboardEntry[] = (submissions || []).map((s: any) => ({
         student_id: s.student_id,
-        student_name: s.students.name,
-        total_marks: s.total_marks,
+        student_name: s.students?.name || 'Unknown',
+        total_marks: s.total_marks || 0,
         submitted_at: s.submitted_at,
       }));
 
@@ -106,6 +106,11 @@ export default function Results() {
         return <span className="w-5 h-5 flex items-center justify-center text-muted-foreground">{rank}</span>;
     }
   }
+
+  const safePercentage = (marks: number, max: number) => {
+    if (!max || max === 0) return 0;
+    return Math.round((marks / max) * 100);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -163,7 +168,7 @@ export default function Results() {
                     <span className="text-lg text-muted-foreground">/{maxMarks} pts</span>
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {Math.round((entry.total_marks / maxMarks) * 100)}%
+                    {safePercentage(entry.total_marks, maxMarks)}%
                   </p>
                 </CardContent>
               </Card>
@@ -202,11 +207,11 @@ export default function Results() {
                         <div className="w-24 h-2 bg-muted/50 rounded-full overflow-hidden">
                           <div 
                             className="h-full gradient-primary rounded-full"
-                            style={{ width: `${(entry.total_marks / maxMarks) * 100}%` }}
+                            style={{ width: `${safePercentage(entry.total_marks, maxMarks)}%` }}
                           />
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {Math.round((entry.total_marks / maxMarks) * 100)}%
+                          {safePercentage(entry.total_marks, maxMarks)}%
                         </span>
                       </div>
                     </TableCell>

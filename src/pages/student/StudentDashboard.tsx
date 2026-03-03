@@ -28,7 +28,6 @@ export default function StudentDashboard() {
 
   async function fetchCompetitions() {
     try {
-      // Only fetch competitions the student is assigned to
       const { data: enrollments, error: enrollError } = await supabase
         .from('student_competitions')
         .select(`
@@ -52,6 +51,7 @@ export default function StudentDashboard() {
             started_at: e.started_at,
             submitted_at: e.submitted_at,
             total_marks: e.total_marks,
+            is_locked: e.is_locked ?? false,
           } as StudentCompetition,
         }));
 
@@ -65,6 +65,9 @@ export default function StudentDashboard() {
   }
 
   function canStartTest(comp: CompetitionWithStatus): boolean {
+    // If locked by admin, cannot start
+    if (comp.studentStatus?.is_locked) return false;
+    // If already submitted, cannot start
     if (comp.studentStatus?.has_submitted) return false;
     
     const now = new Date();
@@ -86,7 +89,6 @@ export default function StudentDashboard() {
 
   async function handleStartTest(competitionId: string) {
     try {
-      // Check if already enrolled
       const { data: existing } = await supabase
         .from('student_competitions')
         .select('*')
@@ -95,7 +97,6 @@ export default function StudentDashboard() {
         .maybeSingle();
 
       if (!existing) {
-        // Create enrollment
         const { error } = await supabase
           .from('student_competitions')
           .insert([{
@@ -107,7 +108,6 @@ export default function StudentDashboard() {
         
         if (error) throw error;
       } else if (!existing.has_started) {
-        // Update to started
         const { error } = await supabase
           .from('student_competitions')
           .update({
@@ -149,6 +149,7 @@ export default function StudentDashboard() {
             const canStart = canStartTest(comp);
             const hasSubmitted = comp.studentStatus?.has_submitted;
             const hasStarted = comp.studentStatus?.has_started;
+            const isLocked = comp.studentStatus?.is_locked;
 
             return (
               <Card key={comp.id} className="glass-card overflow-hidden hover:border-primary/50 transition-all">
@@ -177,7 +178,12 @@ export default function StudentDashboard() {
                     </div>
 
                     <div className="ml-4">
-                      {hasSubmitted ? (
+                      {isLocked ? (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
+                          <Lock className="w-5 h-5" />
+                          <span className="font-bold">LOCKED</span>
+                        </div>
+                      ) : hasSubmitted ? (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 text-accent border border-accent/30">
                           <CheckCircle className="w-5 h-5" />
                           <span className="font-bold font-display">DONE</span>
@@ -201,7 +207,7 @@ export default function StudentDashboard() {
                       ) : (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground">
                           <Lock className="w-5 h-5" />
-                          <span className="font-bold">LOCKED</span>
+                          <span className="font-bold">NOT YET</span>
                         </div>
                       )}
                     </div>
@@ -267,7 +273,6 @@ function StudentResults() {
     setDetailsLoading(true);
     
     try {
-      // Fetch student answers with questions
       const { data: answers, error } = await supabase
         .from('student_answers')
         .select(`
@@ -275,11 +280,15 @@ function StudentResults() {
           questions!inner(*)
         `)
         .eq('student_id', studentId)
-        .eq('competition_id', result.competition_id)
-        .order('questions(question_number)');
+        .eq('competition_id', result.competition_id);
 
       if (error) throw error;
-      setDetailedAnswers(answers || []);
+      
+      // Sort by question_number client-side
+      const sorted = (answers || []).sort((a: any, b: any) => 
+        (a.questions?.question_number || 0) - (b.questions?.question_number || 0)
+      );
+      setDetailedAnswers(sorted);
     } catch (error) {
       console.error('Error fetching details:', error);
       toast.error('Failed to load details');
@@ -305,8 +314,8 @@ function StudentResults() {
       <div className="space-y-4">
         {results.map((result) => {
           const comp = result.competitions;
-          const showResult = comp.show_results;
-          const showDetails = comp.show_detailed_results;
+          const showResult = comp?.show_results;
+          const showDetails = comp?.show_detailed_results;
 
           return (
             <div 
@@ -314,9 +323,9 @@ function StudentResults() {
               className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all"
             >
               <div>
-                <h4 className="font-bold text-foreground font-display">{comp.name}</h4>
+                <h4 className="font-bold text-foreground font-display">{comp?.name || 'Unknown'}</h4>
                 <p className="text-sm text-muted-foreground">
-                  Submitted: {new Date(result.submitted_at).toLocaleString()}
+                  Submitted: {result.submitted_at ? new Date(result.submitted_at).toLocaleString() : '-'}
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -361,8 +370,9 @@ function StudentResults() {
             <div className="text-center py-8 text-muted-foreground">Loading answers...</div>
           ) : (
             <div className="space-y-4">
-              {detailedAnswers.map((answer, idx) => {
+              {detailedAnswers.map((answer) => {
                 const q = answer.questions;
+                if (!q) return null;
                 const isCorrect = answer.is_correct;
                 const selectedAnswer = answer.selected_answer;
                 const correctAnswer = q.correct_answer;
@@ -419,6 +429,13 @@ function StudentResults() {
                         );
                       })}
                     </div>
+
+                    {q.explanation && (
+                      <div className="mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+                        <span className="font-bold text-primary">Explanation:</span>{' '}
+                        <span className="text-foreground">{q.explanation}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

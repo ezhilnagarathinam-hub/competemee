@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw } from 'lucide-react';
+import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ export default function Students() {
 
       const { data: scData } = await supabase
         .from('student_competitions')
-        .select('student_id, competition_id, has_started, has_submitted');
+        .select('student_id, competition_id, has_started, has_submitted, is_locked');
       
       const mappings: Record<string, any[]> = {};
       (scData || []).forEach((sc: any) => {
@@ -144,39 +144,46 @@ export default function Students() {
     }
   }
 
-  async function resetStudentCompetition(studentId: string, competitionId: string) {
-    if (!confirm('Reset this student\'s test? They will be able to retake the competition. All previous answers will be deleted.')) return;
-    
+  async function toggleLock(studentId: string, competitionId: string, currentlyLocked: boolean) {
     try {
-      // Reset the competition status
-      const { error: scError } = await supabase
+      const { error } = await supabase
         .from('student_competitions')
-        .update({
-          has_started: false,
-          has_submitted: false,
-          started_at: null,
-          submitted_at: null,
-          total_marks: 0,
-        })
+        .update({ is_locked: !currentlyLocked })
         .eq('student_id', studentId)
         .eq('competition_id', competitionId);
 
-      if (scError) throw scError;
+      if (error) throw error;
 
-      // Delete previous answers
-      const { error: ansError } = await supabase
-        .from('student_answers')
-        .delete()
-        .eq('student_id', studentId)
-        .eq('competition_id', competitionId);
+      // If unlocking, also reset submission so student can retake
+      if (currentlyLocked) {
+        await supabase
+          .from('student_competitions')
+          .update({
+            has_submitted: false,
+            has_started: false,
+            started_at: null,
+            submitted_at: null,
+            total_marks: 0,
+          })
+          .eq('student_id', studentId)
+          .eq('competition_id', competitionId);
 
-      if (ansError) throw ansError;
+        // Delete previous answers
+        await supabase
+          .from('student_answers')
+          .delete()
+          .eq('student_id', studentId)
+          .eq('competition_id', competitionId);
 
-      toast.success('Student test reset! They can now retake the competition.');
+        toast.success('Unlocked! Student can now retake the test.');
+      } else {
+        toast.success('Locked! Student cannot take this test.');
+      }
+
       fetchStudents();
     } catch (error) {
-      console.error('Error resetting student competition:', error);
-      toast.error('Failed to reset');
+      console.error('Error toggling lock:', error);
+      toast.error('Failed to update lock status');
     }
   }
 
@@ -226,11 +233,11 @@ export default function Students() {
     toast.success('Credentials copied!');
   }
 
-  function getCompetitionInfo(studentId: string): { name: string; submitted: boolean; compId: string }[] {
+  function getCompetitionInfo(studentId: string): { name: string; submitted: boolean; locked: boolean; compId: string }[] {
     const scs = studentCompetitions[studentId] || [];
     return scs.map((sc: any) => {
       const comp = competitions.find(c => c.id === sc.competition_id);
-      return { name: comp?.name || '', submitted: sc.has_submitted, compId: sc.competition_id };
+      return { name: comp?.name || '', submitted: sc.has_submitted, locked: sc.is_locked ?? false, compId: sc.competition_id };
     }).filter(c => c.name);
   }
 
@@ -357,24 +364,22 @@ export default function Students() {
                   <TableCell className="font-bold">{student.name}</TableCell>
                   <TableCell>{student.phone}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[250px]">
+                    <div className="flex flex-wrap gap-1 max-w-[300px]">
                       {getCompetitionInfo(student.id).length > 0 ? (
                         getCompetitionInfo(student.id).map((info, i) => (
                           <div key={i} className="flex items-center gap-1">
-                            <Badge variant="outline" className={`text-xs ${info.submitted ? 'border-accent/50 text-accent' : 'border-primary/50 text-primary'}`}>
-                              {info.name} {info.submitted ? '✓' : ''}
+                            <Badge variant="outline" className={`text-xs ${info.submitted ? 'border-accent/50 text-accent' : info.locked ? 'border-destructive/50 text-destructive' : 'border-primary/50 text-primary'}`}>
+                              {info.name} {info.submitted ? '✓' : info.locked ? '🔒' : ''}
                             </Badge>
-                            {info.submitted && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 p-0 text-warning hover:text-warning hover:bg-warning/10"
-                                title="Reset - allow retake"
-                                onClick={() => resetStudentCompetition(student.id, info.compId)}
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-6 w-6 p-0 ${info.locked ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-accent hover:text-accent hover:bg-accent/10'}`}
+                              title={info.locked ? 'Click to unlock (allow retake)' : 'Click to lock'}
+                              onClick={() => toggleLock(student.id, info.compId, info.locked)}
+                            >
+                              {info.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                            </Button>
                           </div>
                         ))
                       ) : (

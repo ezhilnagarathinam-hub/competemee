@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Image, Trash2, Edit, FileQuestion, Upload, FileImage, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Image, Trash2, Edit, FileQuestion, Upload, FileImage, Loader2, Sparkles, Copy, ArrowUp, ArrowDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,7 @@ export default function Questions() {
     option_d: '',
     correct_answer: 'A' as 'A' | 'B' | 'C' | 'D',
     marks: 1,
+    explanation: '',
   });
 
   useEffect(() => {
@@ -86,7 +87,14 @@ export default function Questions() {
         const { error } = await supabase
           .from('questions')
           .update({
-            ...formData,
+            question_text: formData.question_text,
+            option_a: formData.option_a,
+            option_b: formData.option_b,
+            option_c: formData.option_c,
+            option_d: formData.option_d,
+            correct_answer: formData.correct_answer,
+            marks: formData.marks,
+            explanation: formData.explanation || null,
             image_url: formData.image_url || null,
           })
           .eq('id', editingId);
@@ -97,7 +105,14 @@ export default function Questions() {
         const { error } = await supabase
           .from('questions')
           .insert([{
-            ...formData,
+            question_text: formData.question_text,
+            option_a: formData.option_a,
+            option_b: formData.option_b,
+            option_c: formData.option_c,
+            option_d: formData.option_d,
+            correct_answer: formData.correct_answer,
+            marks: formData.marks,
+            explanation: formData.explanation || null,
             competition_id: selectedCompetition,
             question_number: nextNumber,
             image_url: formData.image_url || null,
@@ -132,6 +147,42 @@ export default function Questions() {
     }
   }
 
+  async function moveQuestion(index: number, direction: 'up' | 'down') {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= questions.length) return;
+
+    const q1 = questions[index];
+    const q2 = questions[swapIndex];
+
+    try {
+      await Promise.all([
+        supabase.from('questions').update({ question_number: q2.question_number }).eq('id', q1.id),
+        supabase.from('questions').update({ question_number: q1.question_number }).eq('id', q2.id),
+      ]);
+      fetchQuestions(selectedCompetition);
+    } catch (error) {
+      console.error('Error reordering:', error);
+      toast.error('Failed to reorder');
+    }
+  }
+
+  function copyQuestion(q: Question) {
+    setFormData({
+      question_text: q.question_text,
+      image_url: q.image_url || '',
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c,
+      option_d: q.option_d,
+      correct_answer: q.correct_answer,
+      marks: q.marks,
+      explanation: (q as any).explanation || '',
+    });
+    setEditingId(null);
+    setDialogOpen(true);
+    toast.info('Question copied — save to add as new');
+  }
+
   function resetForm() {
     setFormData({
       question_text: '',
@@ -142,6 +193,7 @@ export default function Questions() {
       option_d: '',
       correct_answer: 'A',
       marks: 1,
+      explanation: '',
     });
     setEditingId(null);
   }
@@ -156,6 +208,7 @@ export default function Questions() {
       option_d: q.option_d,
       correct_answer: q.correct_answer,
       marks: q.marks,
+      explanation: (q as any).explanation || '',
     });
     setEditingId(q.id);
     setDialogOpen(true);
@@ -195,9 +248,12 @@ export default function Questions() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file is an image
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file (JPG, PNG, WEBP). Word documents and PDFs are not supported.');
+    // Accept images, PDFs, and Word docs
+    const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const isAllowed = allowedTypes.some(type => file.type.startsWith(type));
+    
+    if (!isAllowed) {
+      toast.error('Please upload an image (JPG, PNG, WEBP), PDF, or Word document.');
       return;
     }
 
@@ -222,11 +278,10 @@ export default function Questions() {
       const { questions: extractedQuestions } = await response.json();
       
       if (!extractedQuestions || extractedQuestions.length === 0) {
-        toast.error('No questions could be extracted from the image');
+        toast.error('No questions could be extracted from the file');
         return;
       }
 
-      // Add all extracted questions to the database
       let addedCount = 0;
       for (const q of extractedQuestions) {
         const nextNumber = questions.length + addedCount + 1;
@@ -242,6 +297,7 @@ export default function Questions() {
             option_d: q.option_d || '',
             correct_answer: q.correct_answer || 'A',
             marks: q.marks || 1,
+            explanation: q.explanation || null,
           }]);
         
         if (!error) addedCount++;
@@ -260,13 +316,13 @@ export default function Questions() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground font-display">QUESTIONS</h1>
           <p className="text-muted-foreground mt-1">Build your question arsenal</p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select competition" />
@@ -296,7 +352,7 @@ export default function Questions() {
               </DialogHeader>
               <div className="space-y-4">
                 <p className="text-muted-foreground text-sm">
-                  Upload an image or PDF of your question paper. Supports Tamil & English languages.
+                  Upload an image, PDF, or Word document of your question paper. Supports Tamil & English.
                 </p>
                 <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
                   {ocrProcessing ? (
@@ -309,11 +365,11 @@ export default function Questions() {
                       <FileImage className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                       <p className="text-sm text-muted-foreground mb-4">
                         Drag & drop or click to upload<br />
-                        <span className="text-xs">JPG, PNG, WEBP images only</span>
+                        <span className="text-xs">JPG, PNG, WEBP, PDF, DOC, DOCX</span>
                       </p>
                       <Input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         onChange={handleOcrUpload}
                         className="cursor-pointer"
                       />
@@ -391,39 +447,19 @@ export default function Questions() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="option_a">Option A</Label>
-                    <Input
-                      id="option_a"
-                      value={formData.option_a}
-                      onChange={(e) => setFormData({ ...formData, option_a: e.target.value })}
-                      required
-                    />
+                    <Input id="option_a" value={formData.option_a} onChange={(e) => setFormData({ ...formData, option_a: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_b">Option B</Label>
-                    <Input
-                      id="option_b"
-                      value={formData.option_b}
-                      onChange={(e) => setFormData({ ...formData, option_b: e.target.value })}
-                      required
-                    />
+                    <Input id="option_b" value={formData.option_b} onChange={(e) => setFormData({ ...formData, option_b: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_c">Option C</Label>
-                    <Input
-                      id="option_c"
-                      value={formData.option_c}
-                      onChange={(e) => setFormData({ ...formData, option_c: e.target.value })}
-                      required
-                    />
+                    <Input id="option_c" value={formData.option_c} onChange={(e) => setFormData({ ...formData, option_c: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_d">Option D</Label>
-                    <Input
-                      id="option_d"
-                      value={formData.option_d}
-                      onChange={(e) => setFormData({ ...formData, option_d: e.target.value })}
-                      required
-                    />
+                    <Input id="option_d" value={formData.option_d} onChange={(e) => setFormData({ ...formData, option_d: e.target.value })} required />
                   </div>
                 </div>
 
@@ -441,6 +477,20 @@ export default function Questions() {
                       </div>
                     ))}
                   </RadioGroup>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="explanation" className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-accent" />
+                    Answer Explanation (Optional)
+                  </Label>
+                  <Textarea
+                    id="explanation"
+                    value={formData.explanation}
+                    onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                    placeholder="Explain why this answer is correct..."
+                    rows={2}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -487,8 +537,17 @@ export default function Questions() {
             <Card key={q.id} className="glass-card hover:border-primary/30 transition-all">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 shadow-primary">
-                    <span className="font-bold text-primary-foreground font-display">{q.question_number}</span>
+                  {/* Reorder buttons */}
+                  <div className="flex flex-col gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0} onClick={() => moveQuestion(index, 'up')}>
+                      <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 shadow-primary">
+                      <span className="font-bold text-primary-foreground font-display">{q.question_number}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 'down')}>
+                      <ArrowDown className="w-4 h-4" />
+                    </Button>
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-foreground mb-3">{q.question_text}</p>
@@ -514,9 +573,18 @@ export default function Questions() {
                         );
                       })}
                     </div>
+                    {(q as any).explanation && (
+                      <div className="mt-2 p-2 rounded-lg bg-accent/10 border border-accent/20 text-sm">
+                        <span className="font-bold text-accent">Explanation:</span>{' '}
+                        <span className="text-muted-foreground">{(q as any).explanation}</span>
+                      </div>
+                    )}
                     <p className="mt-2 text-sm text-muted-foreground">Points: <span className="font-bold text-primary">{q.marks}</span></p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2">
+                    <Button variant="outline" size="sm" onClick={() => copyQuestion(q)} className="border-accent/30 hover:bg-accent/10" title="Duplicate">
+                      <Copy className="w-4 h-4" />
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(q)} className="border-primary/30 hover:bg-primary/10">
                       <Edit className="w-4 h-4" />
                     </Button>

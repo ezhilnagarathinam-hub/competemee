@@ -97,6 +97,7 @@ export type Database = {
           competition_id: string
           correct_answer: string
           created_at: string | null
+          explanation: string | null
           id: string
           image_url: string | null
           marks: number | null
@@ -111,6 +112,7 @@ export type Database = {
           competition_id: string
           correct_answer: string
           created_at?: string | null
+          explanation?: string | null
           id?: string
           image_url?: string | null
           marks?: number | null
@@ -125,6 +127,7 @@ export type Database = {
           competition_id?: string
           correct_answer?: string
           created_at?: string | null
+          explanation?: string | null
           id?: string
           image_url?: string | null
           marks?: number | null
@@ -209,6 +212,7 @@ export type Database = {
           has_started: boolean | null
           has_submitted: boolean | null
           id: string
+          is_locked: boolean | null
           started_at: string | null
           student_id: string
           submitted_at: string | null
@@ -219,6 +223,7 @@ export type Database = {
           has_started?: boolean | null
           has_submitted?: boolean | null
           id?: string
+          is_locked?: boolean | null
           started_at?: string | null
           student_id: string
           submitted_at?: string | null
@@ -229,6 +234,7 @@ export type Database = {
           has_started?: boolean | null
           has_submitted?: boolean | null
           id?: string
+          is_locked?: boolean | null
           started_at?: string | null
           student_id?: string
           submitted_at?: string | null

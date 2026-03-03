@@ -36,6 +36,7 @@ export interface Question {
   option_d: string;
   correct_answer: 'A' | 'B' | 'C' | 'D';
   marks: number;
+  explanation: string | null;
   created_at: string;
 }
 
@@ -61,6 +62,7 @@ export interface StudentCompetition {
   started_at: string | null;
   submitted_at: string | null;
   total_marks: number;
+  is_locked: boolean;
 }
 
 export interface StudentAnswer {
