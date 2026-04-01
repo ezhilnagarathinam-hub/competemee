@@ -29,7 +29,6 @@ CREATE POLICY "Students can update own row" ON public.students
 -- Inserts and deletes should be performed by admins only
 CREATE POLICY "Admins can insert students" ON public.students
   FOR INSERT
-  USING (EXISTS(SELECT 1 FROM public.admins WHERE public.admins.id = auth.uid()))
   WITH CHECK (EXISTS(SELECT 1 FROM public.admins WHERE public.admins.id = auth.uid()));
 
 CREATE POLICY "Admins can delete students" ON public.students
