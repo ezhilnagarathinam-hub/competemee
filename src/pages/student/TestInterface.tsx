@@ -134,11 +134,22 @@ export default function TestInterface() {
     }
   }
 
-  // Fetch players' progress and marks for multiplayer UI
+  // Fetch players' progress and marks for multiplayer UI (calls minimal REST API with supabase fallback)
   async function fetchPlayers() {
     if (!competitionId) return;
+    const apiBase = (import.meta.env.VITE_PLAYERS_API_URL as string) || 'http://localhost:4000';
     try {
-      // Get student_competitions entries for this competition
+      const res = await fetch(`${apiBase}/players?competition_id=${competitionId}`);
+      if (!res.ok) throw new Error('Players API responded with status ' + res.status);
+      const playersData = await res.json();
+      setPlayers(playersData || []);
+      return;
+    } catch (err) {
+      console.warn('Players API fetch failed, falling back to direct DB (supabase):', err);
+    }
+
+    // Fallback: existing supabase-based aggregation (keeps UI working without the API)
+    try {
       const { data: scRows, error: scErr } = await supabase
         .from('student_competitions')
         .select('student_id,total_marks')
@@ -153,7 +164,6 @@ export default function TestInterface() {
         return;
       }
 
-      // Fetch student names
       const { data: studs, error: sErr } = await supabase
         .from('students')
         .select('id,name')
@@ -161,7 +171,6 @@ export default function TestInterface() {
 
       if (sErr) throw sErr;
 
-      // Fetch latest answered question numbers per student
       const { data: qData, error: qErr } = await supabase
         .from('student_answers')
         .select('student_id,questions(question_number)')
@@ -169,7 +178,6 @@ export default function TestInterface() {
         .in('student_id', studentIds as string[])
         .order('created_at', { ascending: false });
 
-      // Build current question per student by finding max question_number among answers
       const currentMap = new Map<string, number | null>();
       (qData || []).forEach((row: any) => {
         const sid = row.student_id as string;
@@ -191,7 +199,7 @@ export default function TestInterface() {
 
       setPlayers(playerList);
     } catch (error) {
-      console.error('Error fetching players:', error);
+      console.error('Error fetching players (fallback):', error);
     }
   }
 

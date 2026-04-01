@@ -21,22 +21,24 @@ export default function StudentLogin() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .maybeSingle();
+      const apiBase = (import.meta.env.VITE_PLAYERS_API_URL as string) || 'http://localhost:4000';
+      const resp = await fetch(`${apiBase}/student/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
 
-      if (error) throw error;
-
-      if (data) {
-        login(data.id, data.name);
-        toast.success('Welcome, ' + data.name);
-        navigate('/student');
-      } else {
-        toast.error('Invalid username or password');
+      if (!resp.ok) {
+        if (resp.status === 401) toast.error('Invalid username or password');
+        else toast.error('Login failed');
+        setLoading(false);
+        return;
       }
+
+      const data = await resp.json();
+      login(data.id, data.name);
+      toast.success('Welcome, ' + data.name);
+      navigate('/student');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Login failed. Please try again.');
