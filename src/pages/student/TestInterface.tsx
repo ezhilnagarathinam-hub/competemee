@@ -346,6 +346,10 @@ export default function TestInterface() {
   };
 
   const handleFinalSubmit = () => {
+    if (timeExpired) {
+      toast.error('You cannot submit the test as time has ended. Contact Admin for recovery.');
+      return;
+    }
     setSubmitDialogOpen(true);
   };
 

@@ -286,6 +286,9 @@ export default function StudentDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Leaderboard Section */}
+      <StudentLeaderboard studentId={studentId} />
+
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -298,6 +301,164 @@ export default function StudentDashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/* Countdown timer component for each competition */
+function CountdownTimer({ comp }: { comp: CompetitionWithStatus }) {
+  const [countdown, setCountdown] = useState('');
+  const [label, setLabel] = useState('');
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const compDate = parseISO(comp.date);
+      const [startH, startM] = comp.start_time.split(':').map(Number);
+      const [endH, endM] = comp.end_time.split(':').map(Number);
+      
+      const startTime = new Date(compDate);
+      startTime.setHours(startH, startM, 0, 0);
+      const endTime = new Date(compDate);
+      endTime.setHours(endH, endM, 0, 0);
+
+      if (now < startTime) {
+        const diff = Math.floor((startTime.getTime() - now.getTime()) / 1000);
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        setLabel('Starts in');
+        setCountdown(`${h > 0 ? h + 'h ' : ''}${m}m ${s}s`);
+      } else if (now >= startTime && now <= endTime) {
+        const diff = Math.floor((endTime.getTime() - now.getTime()) / 1000);
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        setLabel('Ends in');
+        setCountdown(`${h > 0 ? h + 'h ' : ''}${m}m ${s}s`);
+      } else {
+        setLabel('');
+        setCountdown('Ended');
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [comp]);
+
+  if (!countdown) return null;
+
+  return (
+    <div className="mt-2 flex items-center gap-2 text-sm">
+      <Timer className="w-4 h-4 text-primary animate-pulse" />
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-bold font-display ${countdown === 'Ended' ? 'text-destructive' : 'text-primary'}`}>
+        {countdown}
+      </span>
+    </div>
+  );
+}
+
+/* Leaderboard visible to students when competition has show_leaderboard enabled */
+function StudentLeaderboard({ studentId }: { studentId: string | null }) {
+  const [leaderboardComps, setLeaderboardComps] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchLeaderboards();
+  }, []);
+
+  async function fetchLeaderboards() {
+    try {
+      const { data: comps } = await supabase
+        .from('competitions')
+        .select('*')
+        .eq('show_leaderboard', true)
+        .eq('is_active', true);
+
+      if (!comps || comps.length === 0) return;
+
+      const results: any[] = [];
+      for (const comp of comps) {
+        const { data: submissions } = await supabase
+          .from('student_competitions')
+          .select('student_id, total_marks, submitted_at, students!inner(name)')
+          .eq('competition_id', comp.id)
+          .eq('has_submitted', true)
+          .order('total_marks', { ascending: false });
+
+        const { data: questions } = await supabase
+          .from('questions')
+          .select('marks')
+          .eq('competition_id', comp.id);
+
+        const maxMarks = questions?.reduce((s, q) => s + (q.marks || 0), 0) || 0;
+
+        if (submissions && submissions.length > 0) {
+          results.push({ comp, entries: submissions, maxMarks });
+        }
+      }
+      setLeaderboardComps(results);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    }
+  }
+
+  if (leaderboardComps.length === 0) return null;
+
+  function getRankIcon(rank: number) {
+    switch (rank) {
+      case 1: return <Trophy className="w-5 h-5 text-yellow-500" />;
+      case 2: return <Medal className="w-5 h-5 text-gray-400" />;
+      case 3: return <Award className="w-5 h-5 text-amber-600" />;
+      default: return <span className="text-muted-foreground">{rank}</span>;
+    }
+  }
+
+  return (
+    <>
+      {leaderboardComps.map(({ comp, entries, maxMarks }) => (
+        <Card key={comp.id} className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-display">
+              <Trophy className="w-5 h-5 text-primary" />
+              LEADERBOARD - {comp.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Rank</TableHead>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Points</TableHead>
+                  <TableHead>%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry: any, index: number) => (
+                  <TableRow 
+                    key={entry.student_id} 
+                    className={entry.student_id === studentId ? 'bg-primary/10' : ''}
+                  >
+                    <TableCell>{getRankIcon(index + 1)}</TableCell>
+                    <TableCell className="font-bold">
+                      {(entry as any).students?.name || 'Unknown'}
+                      {entry.student_id === studentId && <span className="text-primary ml-2">(You)</span>}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-bold text-primary">{entry.total_marks}</span>/{maxMarks}
+                    </TableCell>
+                    <TableCell>
+                      {maxMarks > 0 ? Math.round((entry.total_marks / maxMarks) * 100) : 0}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ))}
+    </>
   );
 }
 
