@@ -11,6 +11,7 @@ interface LeaderboardEntry {
   student_name: string;
   total_marks: number;
   submitted_at: string | null;
+  isLate?: boolean;
 }
 
 export default function Results() {
