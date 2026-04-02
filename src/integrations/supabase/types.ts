@@ -209,10 +209,12 @@ export type Database = {
       student_competitions: {
         Row: {
           competition_id: string
+          current_question: number | null
           has_started: boolean | null
           has_submitted: boolean | null
           id: string
           is_locked: boolean | null
+          last_seen: string | null
           started_at: string | null
           student_id: string
           submitted_at: string | null
@@ -220,10 +222,12 @@ export type Database = {
         }
         Insert: {
           competition_id: string
+          current_question?: number | null
           has_started?: boolean | null
           has_submitted?: boolean | null
           id?: string
           is_locked?: boolean | null
+          last_seen?: string | null
           started_at?: string | null
           student_id: string
           submitted_at?: string | null
@@ -231,10 +235,12 @@ export type Database = {
         }
         Update: {
           competition_id?: string
+          current_question?: number | null
           has_started?: boolean | null
           has_submitted?: boolean | null
           id?: string
           is_locked?: boolean | null
+          last_seen?: string | null
           started_at?: string | null
           student_id?: string
           submitted_at?: string | null
