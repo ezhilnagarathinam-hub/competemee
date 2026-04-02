@@ -193,7 +193,7 @@ export default function StudentDashboard() {
                       {comp.description && (
                         <p className="text-sm text-muted-foreground mb-3">{comp.description}</p>
                       )}
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           {format(parseISO(comp.date), 'MMM dd, yyyy')}
@@ -204,6 +204,10 @@ export default function StudentDashboard() {
                         </span>
                         <span>{formatDuration(comp.duration_minutes)}</span>
                       </div>
+                      {/* Countdown timer */}
+                      {isEnrolled && !hasSubmitted && !isLocked && (
+                        <CountdownTimer comp={comp} />
+                      )}
                     </div>
 
                     <div className="ml-4">
