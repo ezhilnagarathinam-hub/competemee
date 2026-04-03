@@ -21,6 +21,7 @@ export default function StudentDashboard() {
   const [competitions, setCompetitions] = useState<CompetitionWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [, setTick] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +29,12 @@ export default function StudentDashboard() {
       fetchCompetitions();
     }
   }, [studentId]);
+
+  // Force re-render every 5 seconds so button states update in real-time
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function fetchCompetitions() {
     try {
