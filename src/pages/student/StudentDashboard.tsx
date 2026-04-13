@@ -320,13 +320,14 @@ function CountdownTimer({ comp }: { comp: CompetitionWithStatus }) {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      const compDate = parseISO(comp.date);
+      const startDate = parseISO(comp.date);
+      const endDate = comp.end_date ? parseISO(comp.end_date) : startDate;
       const [startH, startM] = comp.start_time.split(':').map(Number);
       const [endH, endM] = comp.end_time.split(':').map(Number);
       
-      const startTime = new Date(compDate);
+      const startTime = new Date(startDate);
       startTime.setHours(startH, startM, 0, 0);
-      const endTime = new Date(compDate);
+      const endTime = new Date(endDate);
       endTime.setHours(endH, endM, 0, 0);
 
       if (now < startTime) {
