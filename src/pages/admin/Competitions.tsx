@@ -67,16 +67,24 @@ export default function Competitions() {
     
     try {
       if (editingId) {
+        const submitData = {
+          ...formData,
+          end_date: formData.end_date || formData.date || null,
+        };
         const { error } = await supabase
           .from('competitions')
-          .update(formData)
+          .update(submitData)
           .eq('id', editingId);
         if (error) throw error;
         toast.success('Competition updated successfully');
       } else {
+        const submitData = {
+          ...formData,
+          end_date: formData.end_date || formData.date || null,
+        };
         const { error } = await supabase
           .from('competitions')
-          .insert([formData]);
+          .insert([submitData]);
         if (error) throw error;
         toast.success('Competition created successfully');
       }
@@ -417,7 +425,10 @@ export default function Competitions() {
                     <div className="flex items-center gap-6 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {format(new Date(comp.date), 'MMM dd, yyyy')}
+                        {comp.end_date && comp.end_date !== comp.date
+                          ? `${format(new Date(comp.date), 'MMM dd')} – ${format(new Date(comp.end_date), 'MMM dd, yyyy')}`
+                          : format(new Date(comp.date), 'MMM dd, yyyy')
+                        }
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
