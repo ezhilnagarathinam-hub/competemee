@@ -67,20 +67,51 @@ export default function StudentDashboard() {
 
       const compsWithStatus: CompetitionWithStatus[] = ((allComps || []) as Competition[]).map((comp) => {
         const enrollment = enrollmentMap.get(comp.id);
+        // If we have a localStorage override (recently submitted), prefer that for immediate UI
+        const localFlag = (() => {
+          try {
+            return localStorage.getItem(`submittedCompetition:${comp.id}`);
+          } catch (e) {
+            return null;
+          }
+        })();
+
+        const baseStatus = enrollment ? {
+          id: enrollment.id,
+          student_id: enrollment.student_id,
+          competition_id: enrollment.competition_id,
+          has_started: enrollment.has_started,
+          has_submitted: enrollment.has_submitted,
+          started_at: enrollment.started_at,
+          submitted_at: enrollment.submitted_at,
+          total_marks: enrollment.total_marks,
+          is_locked: enrollment.is_locked ?? false,
+        } as StudentCompetition : undefined;
+
+        if (localFlag) {
+          // remove the local flag once used
+          try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (e) {}
+          return {
+            ...comp,
+            isEnrolled: !!enrollment,
+            studentStatus: {
+              id: baseStatus?.id || '',
+              student_id: baseStatus?.student_id || '',
+              competition_id: comp.id,
+              has_started: baseStatus?.has_started ?? true,
+              has_submitted: true,
+              started_at: baseStatus?.started_at || null,
+              submitted_at: localFlag,
+              total_marks: baseStatus?.total_marks ?? 0,
+              is_locked: true,
+            } as StudentCompetition,
+          };
+        }
+
         return {
           ...comp,
           isEnrolled: !!enrollment,
-          studentStatus: enrollment ? {
-            id: enrollment.id,
-            student_id: enrollment.student_id,
-            competition_id: enrollment.competition_id,
-            has_started: enrollment.has_started,
-            has_submitted: enrollment.has_submitted,
-            started_at: enrollment.started_at,
-            submitted_at: enrollment.submitted_at,
-            total_marks: enrollment.total_marks,
-            is_locked: enrollment.is_locked ?? false,
-          } as StudentCompetition : undefined,
+          studentStatus: baseStatus,
         };
       });
 

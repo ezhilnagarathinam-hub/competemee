@@ -320,18 +320,21 @@ export default function TestInterface() {
       // Calculate scores: correct marks - negative marks (1/3 of question marks per wrong answer)
       let correctMarks = 0;
       let negativeMarks = 0;
+      let answeredCount = 0;
       questions.forEach((q) => {
         const ans = answers.get(q.id);
         if (!ans || !ans.selected_answer) return; // unattempted: no penalty
+        answeredCount += 1;
         if (ans.is_correct) {
           correctMarks += q.marks;
         } else {
           negativeMarks += q.marks / 3;
         }
       });
-      // Round to 2 decimals to keep DB integer-ish friendly while preserving thirds
+      // Round to 2 decimals
       const totalMarks = Math.round((correctMarks - negativeMarks) * 100) / 100;
 
+      // Auto-lock on any submit (partial or full)
       await supabase
         .from('student_competitions')
         .update({
@@ -342,6 +345,13 @@ export default function TestInterface() {
         })
         .eq('student_id', studentId)
         .eq('competition_id', competitionId);
+
+      // Set a localStorage flag so the dashboard can immediately reflect submission/lock
+      try {
+        localStorage.setItem(`submittedCompetition:${competitionId}`, new Date().toISOString());
+      } catch (e) {
+        // ignore
+      }
 
       toast.success('Test submitted successfully!');
       navigate('/student');
