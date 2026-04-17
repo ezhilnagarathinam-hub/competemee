@@ -518,8 +518,18 @@ function StudentResults() {
               <div className="flex items-center gap-4">
                 {showResult ? (
                   <>
-                    <div className="text-2xl font-bold text-primary font-display">
-                      {result.total_marks} <span className="text-sm text-muted-foreground">pts</span>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary font-display">
+                        {result.computed_total} <span className="text-sm text-muted-foreground">/ {result.max_marks} pts</span>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-1 text-xs">
+                        <span className="px-2 py-0.5 rounded-md bg-accent/15 text-accent font-bold">
+                          Correct +{result.correct_marks}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-destructive/15 text-destructive font-bold">
+                          Negative −{result.negative_marks}
+                        </span>
+                      </div>
                     </div>
                     {showDetails && (
                       <Button
