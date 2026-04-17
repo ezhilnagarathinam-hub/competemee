@@ -49,7 +49,7 @@ export default function Questions() {
       // Load per-competition presets from localStorage
       const presetMarks = localStorage.getItem(`qPresetMarks:${selectedCompetition}`);
       const presetTotal = localStorage.getItem(`qPresetTotal:${selectedCompetition}`);
-      const dm = presetMarks ? parseInt(presetMarks) || 1 : 1;
+      const dm = presetMarks ? parseFloat(presetMarks) || 1 : 1;
       const tt = presetTotal ? parseInt(presetTotal) || 0 : 0;
       setDefaultMarks(dm);
       setTargetTotal(tt);
@@ -260,8 +260,8 @@ export default function Questions() {
     setEditingId(null);
   }
 
-  function handleDefaultMarksChange(value: number) {
-    const v = Math.max(1, value || 1);
+  async function handleDefaultMarksChange(value: number) {
+    const v = Math.max(0.1, Number.isFinite(value) ? value : 1);
     setDefaultMarks(v);
     if (selectedCompetition) {
       localStorage.setItem(`qPresetMarks:${selectedCompetition}`, String(v));
@@ -270,13 +270,34 @@ export default function Questions() {
     if (!editingId) {
       setFormData(prev => ({ ...prev, marks: v }));
     }
+
+    // Persist the change to all questions for the selected competition
+    if (selectedCompetition) {
+      try {
+        const { error } = await supabase
+          .from('questions')
+          .update({ marks: v })
+          .eq('competition_id', selectedCompetition);
+        if (error) throw error;
+        // Refresh questions to reflect updated marks
+        fetchQuestions(selectedCompetition);
+        toast.success('Updated marks for all questions');
+      } catch (err) {
+        console.error('Error updating question marks:', err);
+        toast.error('Failed to update marks for all questions');
+      }
+    }
   }
 
   function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Allow typing but restrict to digits only, treat empty as 1
-    const cleaned = e.target.value.replace(/[^0-9]/g, '');
-    const num = cleaned ? parseInt(cleaned, 10) : 1;
-    handleDefaultMarksChange(num);
+    // Allow typing digits and a single decimal point
+    let cleaned = e.target.value.replace(/[^0-9.]/g, '');
+    // remove extra dots
+    const parts = cleaned.split('.');
+    if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
+    const num = cleaned ? parseFloat(cleaned) : 1;
+    // Call async handler but don't await here (UI updates immediately)
+    void handleDefaultMarksChange(num);
   }
 
   function handleTargetTotalChange(value: number) {
@@ -603,10 +624,17 @@ export default function Questions() {
                   <Label htmlFor="marks">Marks</Label>
                   <Input
                     id="marks"
-                    type="number"
-                    min="1"
-                    value={formData.marks}
-                    onChange={(e) => setFormData({ ...formData, marks: parseInt(e.target.value) })}
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*\.?[0-9]*"
+                    value={String(formData.marks)}
+                    onChange={(e) => {
+                      let cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                      const parts = cleaned.split('.');
+                      if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
+                      const val = cleaned ? parseFloat(cleaned) : 0;
+                      setFormData({ ...formData, marks: Number.isNaN(val) ? 0 : val });
+                    }}
                     className="w-24"
                     required
                   />
@@ -631,8 +659,8 @@ export default function Questions() {
               <Input
                 id="defaultMarks"
                 type="text"
-                inputMode="numeric"
-                pattern="\d*"
+                inputMode="decimal"
+                pattern="[0-9]*\\.?[0-9]*"
                 value={String(defaultMarks)}
                 onChange={handleDefaultMarksInputChange}
                 className="w-32"
