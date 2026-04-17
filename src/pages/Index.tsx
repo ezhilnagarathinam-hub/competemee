@@ -35,12 +35,6 @@ export default function Index() {
                   Enter Arena
                 </Button>
               </Link>
-              <Link to="/admin/login">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto border-primary/50 hover:bg-primary/10 h-14 px-8 text-lg">
-                  Admin Portal
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
@@ -116,9 +110,10 @@ export default function Index() {
               <p className="text-primary-foreground/90 mb-8 text-lg">
                 Create your first competition and let the games begin!
               </p>
-              <Link to="/admin/login">
+              <Link to="/student/login">
                 <Button size="lg" variant="secondary" className="shadow-xl h-14 px-10 text-lg font-bold compete-btn">
-                  Launch Admin Portal
+                  <Users className="w-5 h-5 mr-2" />
+                  Compete Now
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
@@ -129,10 +124,17 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="py-8 border-t border-border/50">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-4 text-center relative">
           <p className="text-sm text-muted-foreground">
             © 2026 <span className="font-display font-bold neon-text">COMPETE ME / EA DREAM SUPPORTERS</span>. All rights reserved.
           </p>
+          <Link
+            to="/admin/login"
+            aria-label="Admin"
+            className="absolute right-4 bottom-0 text-[10px] text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+          >
+            ·
+          </Link>
         </div>
       </footer>
     </div>
