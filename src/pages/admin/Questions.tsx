@@ -272,6 +272,13 @@ export default function Questions() {
     }
   }
 
+  function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // Allow typing but restrict to digits only, treat empty as 1
+    const cleaned = e.target.value.replace(/[^0-9]/g, '');
+    const num = cleaned ? parseInt(cleaned, 10) : 1;
+    handleDefaultMarksChange(num);
+  }
+
   function handleTargetTotalChange(value: number) {
     const v = Math.max(0, value || 0);
     setTargetTotal(v);
@@ -623,10 +630,11 @@ export default function Questions() {
               </Label>
               <Input
                 id="defaultMarks"
-                type="number"
-                min="1"
-                value={defaultMarks}
-                onChange={(e) => handleDefaultMarksChange(parseInt(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                pattern="\d*"
+                value={String(defaultMarks)}
+                onChange={handleDefaultMarksInputChange}
                 className="w-32"
               />
               <p className="text-[11px] text-muted-foreground">
