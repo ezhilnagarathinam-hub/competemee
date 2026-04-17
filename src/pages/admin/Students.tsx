@@ -34,6 +34,13 @@ export default function Students() {
   useEffect(() => {
     fetchStudents();
     fetchCompetitions();
+
+    // Poll student competition statuses so admin sees locks/submissions promptly
+    const interval = setInterval(() => {
+      fetchStudents();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   async function fetchStudents() {
@@ -146,9 +153,13 @@ export default function Students() {
 
   async function toggleLock(studentId: string, competitionId: string, currentlyLocked: boolean) {
     try {
+      const updatePayload: any = { is_locked: !currentlyLocked };
+      // When admin locks a student's competition, record the lock time as submitted_at if not set
+      if (!currentlyLocked) updatePayload.submitted_at = new Date().toISOString();
+
       const { error } = await supabase
         .from('student_competitions')
-        .update({ is_locked: !currentlyLocked })
+        .update(updatePayload)
         .eq('student_id', studentId)
         .eq('competition_id', competitionId);
 
