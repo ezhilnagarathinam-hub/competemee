@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Suspense, lazy } from 'react';
 import AnalyticsLoader from '@/components/AnalyticsLoader';
 
 // Pages
@@ -33,13 +32,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <Suspense>
-        {/* Attempt to dynamically render the Analytics component if available */}
-        {/* Lazy import the react entry; if not present, the loader fallback will silently no-op */}
-        {/** @ts-ignore */}
-        {typeof window !== 'undefined' ? lazy(() => import('@vercel/analytics/react')).then((m) => ({ default: m.Analytics || m.default })) : null}
-        <AnalyticsLoader />
-      </Suspense>
+      <AnalyticsLoader />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
