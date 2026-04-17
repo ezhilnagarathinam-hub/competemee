@@ -32,6 +32,21 @@ export default function Results() {
     fetchCompetitions();
   }, []);
 
+  // Poll competitions and leaderboard periodically to reflect new submissions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCompetitions();
+      // Also refresh currently loaded leaderboards (most recent)
+      if (competitions && competitions.length > 0) {
+        const mostRecent = competitions[0];
+        if (mostRecent && mostRecent.submission_count > 0) {
+          loadLeaderboard(mostRecent.id, mostRecent, true);
+        }
+      }
+    }, 10000); // every 10s
+    return () => clearInterval(interval);
+  }, [competitions]);
+
   async function fetchCompetitions() {
     try {
       const { data: comps, error } = await supabase
@@ -75,8 +90,8 @@ export default function Results() {
     }
   }
 
-  async function loadLeaderboard(compId: string, comp?: Competition) {
-    if (leaderboards[compId]) return; // already loaded
+  async function loadLeaderboard(compId: string, comp?: Competition, forceRefresh = false) {
+    if (!forceRefresh && leaderboards[compId]) return; // already loaded
 
     setLoadingComps(prev => new Set(prev).add(compId));
 
