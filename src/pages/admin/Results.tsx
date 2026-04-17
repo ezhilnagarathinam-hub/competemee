@@ -230,6 +230,14 @@ export default function Results() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {safePercentage(entry.total_marks, max)}%
                   </p>
+                  <div className="flex justify-center gap-3 mt-3 text-xs">
+                    <span className="px-2 py-1 rounded-md bg-accent/15 text-accent font-bold">
+                      +{entry.correct_marks}
+                    </span>
+                    <span className="px-2 py-1 rounded-md bg-destructive/15 text-destructive font-bold">
+                      −{entry.negative_marks}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             ))}
