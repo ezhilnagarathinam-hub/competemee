@@ -68,7 +68,7 @@ export default function StudentDashboard() {
       const compsWithStatus: CompetitionWithStatus[] = ((allComps || []) as Competition[]).map((comp) => {
         const enrollment = enrollmentMap.get(comp.id);
         // If we have a localStorage override (recently submitted), prefer that for immediate UI
-        const localFlag = (() => {
+        const localFlagRaw = (() => {
           try {
             return localStorage.getItem(`submittedCompetition:${comp.id}`);
           } catch (e) {
@@ -88,24 +88,41 @@ export default function StudentDashboard() {
           is_locked: enrollment.is_locked ?? false,
         } as StudentCompetition : undefined;
 
-        if (localFlag) {
-          // remove the local flag once used
-          try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (e) {}
-          return {
-            ...comp,
-            isEnrolled: !!enrollment,
-            studentStatus: {
-              id: baseStatus?.id || '',
-              student_id: baseStatus?.student_id || '',
-              competition_id: comp.id,
-              has_started: baseStatus?.has_started ?? true,
-              has_submitted: true,
-              started_at: baseStatus?.started_at || null,
-              submitted_at: localFlag,
-              total_marks: baseStatus?.total_marks ?? 0,
-              is_locked: true,
-            } as StudentCompetition,
-          };
+        // Decide whether to use the local flag: only if it's recent (TTL) and server hasn't reflected submission yet.
+        if (localFlagRaw) {
+          const ttlMs = 60 * 1000; // 60 seconds
+          let usedLocal = false;
+          try {
+            const localDate = new Date(localFlagRaw);
+            const age = Date.now() - localDate.getTime();
+            const serverShowsSubmitted = !!baseStatus?.has_submitted || !!baseStatus?.is_locked;
+            if (age <= ttlMs && !serverShowsSubmitted) {
+              usedLocal = true;
+            } else {
+              // stale or server already updated: remove local flag
+              try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (e) {}
+            }
+          } catch (e) {
+            try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (er) {}
+          }
+
+          if (usedLocal) {
+            return {
+              ...comp,
+              isEnrolled: !!enrollment,
+              studentStatus: {
+                id: baseStatus?.id || '',
+                student_id: baseStatus?.student_id || '',
+                competition_id: comp.id,
+                has_started: baseStatus?.has_started ?? true,
+                has_submitted: true,
+                started_at: baseStatus?.started_at || null,
+                submitted_at: localFlagRaw,
+                total_marks: baseStatus?.total_marks ?? 0,
+                is_locked: true,
+              } as StudentCompetition,
+            };
+          }
         }
 
         return {
