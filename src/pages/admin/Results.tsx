@@ -250,7 +250,9 @@ export default function Results() {
             <TableRow>
               <TableHead className="w-16">Rank</TableHead>
               <TableHead>Player</TableHead>
-              <TableHead>Points</TableHead>
+              <TableHead>Correct</TableHead>
+              <TableHead>Negative</TableHead>
+              <TableHead>Total Score</TableHead>
               <TableHead>Percentage</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Submitted At</TableHead>
@@ -265,6 +267,12 @@ export default function Results() {
                   </div>
                 </TableCell>
                 <TableCell className="font-bold">{entry.student_name}</TableCell>
+                <TableCell>
+                  <span className="font-bold text-accent font-display">+{entry.correct_marks}</span>
+                </TableCell>
+                <TableCell>
+                  <span className="font-bold text-destructive font-display">−{entry.negative_marks}</span>
+                </TableCell>
                 <TableCell>
                   <span className="font-bold text-primary font-display">{entry.total_marks}</span>
                   <span className="text-muted-foreground">/{max}</span>
