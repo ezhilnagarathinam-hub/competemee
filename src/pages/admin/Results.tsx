@@ -152,9 +152,15 @@ export default function Results() {
           }
         }
         const b = breakdown.get(s.student_id) || { correct: 0, negative: 0 };
-        const correct_marks = Math.round(b.correct * 100) / 100;
-        const negative_marks = Math.round(b.negative * 100) / 100;
-        const total_marks = Math.round((b.correct - b.negative) * 100) / 100;
+        const computed_correct = Math.round(b.correct * 100) / 100;
+        const computed_negative = Math.round(b.negative * 100) / 100;
+        const computed_total = Math.round((b.correct - b.negative) * 100) / 100;
+
+        // Prefer authoritative stored total if present (student_competitions.total_marks)
+        const storedTotal = typeof s.total_marks === 'number' ? Math.round(s.total_marks * 100) / 100 : null;
+        const total_marks = storedTotal !== null ? storedTotal : computed_total;
+        const correct_marks = storedTotal !== null ? computed_correct : computed_correct;
+        const negative_marks = storedTotal !== null ? computed_negative : computed_negative;
         return {
           student_id: s.student_id,
           student_name: s.students?.name || 'Unknown',
