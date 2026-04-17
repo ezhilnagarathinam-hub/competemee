@@ -614,6 +614,62 @@ export default function Questions() {
         </div>
       </div>
 
+      {selectedCompetition && (
+        <Card className="glass-card border-primary/20">
+          <CardContent className="p-4 flex flex-wrap items-end gap-6">
+            <div className="space-y-1">
+              <Label htmlFor="defaultMarks" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Default Marks per Question
+              </Label>
+              <Input
+                id="defaultMarks"
+                type="number"
+                min="1"
+                value={defaultMarks}
+                onChange={(e) => handleDefaultMarksChange(parseInt(e.target.value))}
+                className="w-32"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Auto-fills the marks field when adding new questions.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="targetTotal" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Target Total Questions
+              </Label>
+              <Input
+                id="targetTotal"
+                type="number"
+                min="0"
+                value={targetTotal}
+                onChange={(e) => handleTargetTotalChange(parseInt(e.target.value))}
+                className="w-32"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Progress: <span className="font-bold text-primary">{questions.length}</span>
+                {targetTotal > 0 && <> / <span className="font-bold">{targetTotal}</span></>}
+                {targetTotal > 0 && questions.length >= targetTotal && (
+                  <span className="ml-2 text-accent font-bold">✓ Complete</span>
+                )}
+              </p>
+            </div>
+
+            <div className="ml-auto text-right">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Marks</p>
+              <p className="text-2xl font-bold text-primary font-display">
+                {questions.reduce((sum, q) => sum + (q.marks || 0), 0)}
+              </p>
+              {targetTotal > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Target: {targetTotal * defaultMarks}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!selectedCompetition ? (
         <Card className="border-dashed glass-card">
           <CardContent className="py-12 text-center">
