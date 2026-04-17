@@ -317,14 +317,20 @@ export default function TestInterface() {
       return;
     }
     try {
-      // Calculate total marks
-      let totalMarks = 0;
+      // Calculate scores: correct marks - negative marks (1/3 of question marks per wrong answer)
+      let correctMarks = 0;
+      let negativeMarks = 0;
       questions.forEach((q) => {
         const ans = answers.get(q.id);
-        if (ans?.is_correct) {
-          totalMarks += q.marks;
+        if (!ans || !ans.selected_answer) return; // unattempted: no penalty
+        if (ans.is_correct) {
+          correctMarks += q.marks;
+        } else {
+          negativeMarks += q.marks / 3;
         }
       });
+      // Round to 2 decimals to keep DB integer-ish friendly while preserving thirds
+      const totalMarks = Math.round((correctMarks - negativeMarks) * 100) / 100;
 
       await supabase
         .from('student_competitions')
