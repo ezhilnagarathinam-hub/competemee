@@ -118,11 +118,6 @@ export default function StudentLogin() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <Link to="/admin/login" className="text-sm text-primary hover:underline">
-                Admin Login →
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
