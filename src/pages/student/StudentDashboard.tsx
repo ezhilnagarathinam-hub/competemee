@@ -22,7 +22,6 @@ export default function StudentDashboard() {
   const [competitions, setCompetitions] = useState<CompetitionWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
-  const [, setTick] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,11 +30,16 @@ export default function StudentDashboard() {
     }
   }, [studentId]);
 
-  // Force re-render every 5 seconds so button states update in real-time
+  // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 5000);
-    return () => clearInterval(interval);
-  }, []);
+    let interval: NodeJS.Timeout | null = null;
+    if (studentId) {
+      interval = setInterval(() => {
+        fetchCompetitions();
+      }, 5000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [studentId]);
 
   async function fetchCompetitions() {
     try {
@@ -231,9 +235,14 @@ export default function StudentDashboard() {
                           Enroll Now
                         </Button>
                       ) : isLocked ? (
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
-                          <Lock className="w-5 h-5" />
-                          <span className="font-bold">LOCKED</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
+                            <Lock className="w-5 h-5" />
+                            <span className="font-bold">LOCKED</span>
+                          </div>
+                          {comp.studentStatus?.submitted_at && (
+                            <div className="text-[11px] text-muted-foreground mt-1">Locked on {format(parseISO(comp.studentStatus.submitted_at), 'MMM dd, yyyy HH:mm')}</div>
+                          )}
                         </div>
                       ) : hasSubmitted ? (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 text-accent border border-accent/30">
