@@ -254,10 +254,30 @@ export default function Questions() {
       option_c: '',
       option_d: '',
       correct_answer: 'A',
-      marks: 1,
+      marks: defaultMarks || 1,
       explanation: '',
     });
     setEditingId(null);
+  }
+
+  function handleDefaultMarksChange(value: number) {
+    const v = Math.max(1, value || 1);
+    setDefaultMarks(v);
+    if (selectedCompetition) {
+      localStorage.setItem(`qPresetMarks:${selectedCompetition}`, String(v));
+    }
+    // Update the form marks for the next/current new entry (only if not editing)
+    if (!editingId) {
+      setFormData(prev => ({ ...prev, marks: v }));
+    }
+  }
+
+  function handleTargetTotalChange(value: number) {
+    const v = Math.max(0, value || 0);
+    setTargetTotal(v);
+    if (selectedCompetition) {
+      localStorage.setItem(`qPresetTotal:${selectedCompetition}`, String(v));
+    }
   }
 
   function openEdit(q: Question) {
