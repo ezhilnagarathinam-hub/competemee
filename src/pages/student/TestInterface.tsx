@@ -334,17 +334,21 @@ export default function TestInterface() {
       // Round to 2 decimals
       const totalMarks = Math.round((correctMarks - negativeMarks) * 100) / 100;
 
-      // Auto-lock on any submit (partial or full)
+      // Auto-lock on any submit (partial or full).
+      // Use upsert to ensure a record exists and is updated atomically.
       await supabase
         .from('student_competitions')
-        .update({
-          has_submitted: true,
-          submitted_at: new Date().toISOString(),
-          total_marks: totalMarks,
-          is_locked: true,
-        })
-        .eq('student_id', studentId)
-        .eq('competition_id', competitionId);
+        .upsert([
+          {
+            student_id: studentId,
+            competition_id: competitionId,
+            has_submitted: true,
+            submitted_at: new Date().toISOString(),
+            total_marks: totalMarks,
+            is_locked: true,
+            has_started: true,
+          },
+        ], { onConflict: ['student_id', 'competition_id'] });
 
       // Set a localStorage flag so the dashboard can immediately reflect submission/lock
       try {
