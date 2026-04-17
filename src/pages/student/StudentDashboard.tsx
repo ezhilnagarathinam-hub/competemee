@@ -395,7 +395,60 @@ function StudentResults() {
         .eq('has_submitted', true);
 
       if (error) throw error;
-      setResults(data || []);
+
+      // Fetch per-question marks + correctness to compute negative-marking breakdown
+      const compIds = (data || []).map((r: any) => r.competition_id);
+      let breakdownByComp = new Map<string, { correct: number; negative: number; max: number }>();
+
+      if (compIds.length > 0) {
+        const [{ data: ans }, { data: qs }] = await Promise.all([
+          supabase
+            .from('student_answers')
+            .select('competition_id, question_id, is_correct, selected_answer')
+            .eq('student_id', studentId)
+            .in('competition_id', compIds),
+          supabase
+            .from('questions')
+            .select('id, marks, competition_id')
+            .in('competition_id', compIds),
+        ]);
+
+        const qMarks = new Map<string, number>();
+        const maxByComp = new Map<string, number>();
+        (qs || []).forEach((q: any) => {
+          qMarks.set(q.id, q.marks || 0);
+          maxByComp.set(q.competition_id, (maxByComp.get(q.competition_id) || 0) + (q.marks || 0));
+        });
+
+        (ans || []).forEach((a: any) => {
+          if (!a.selected_answer) return;
+          const m = qMarks.get(a.question_id) || 0;
+          const cur = breakdownByComp.get(a.competition_id) || { correct: 0, negative: 0, max: 0 };
+          if (a.is_correct) cur.correct += m;
+          else cur.negative += m / 3;
+          breakdownByComp.set(a.competition_id, cur);
+        });
+
+        // attach max
+        maxByComp.forEach((max, cid) => {
+          const cur = breakdownByComp.get(cid) || { correct: 0, negative: 0, max: 0 };
+          cur.max = max;
+          breakdownByComp.set(cid, cur);
+        });
+      }
+
+      const enriched = (data || []).map((r: any) => {
+        const b = breakdownByComp.get(r.competition_id) || { correct: 0, negative: 0, max: 0 };
+        return {
+          ...r,
+          correct_marks: Math.round(b.correct * 100) / 100,
+          negative_marks: Math.round(b.negative * 100) / 100,
+          computed_total: Math.round((b.correct - b.negative) * 100) / 100,
+          max_marks: b.max,
+        };
+      });
+
+      setResults(enriched);
     } catch (error) {
       console.error('Error fetching results:', error);
     } finally {
