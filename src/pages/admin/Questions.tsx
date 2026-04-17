@@ -24,6 +24,9 @@ export default function Questions() {
   const [ocrProcessing, setOcrProcessing] = useState(false);
   const [aiParsing, setAiParsing] = useState(false);
   
+  const [defaultMarks, setDefaultMarks] = useState<number>(1);
+  const [targetTotal, setTargetTotal] = useState<number>(0);
+
   const [formData, setFormData] = useState({
     question_text: '',
     image_url: '',
@@ -43,6 +46,15 @@ export default function Questions() {
   useEffect(() => {
     if (selectedCompetition) {
       fetchQuestions(selectedCompetition);
+      // Load per-competition presets from localStorage
+      const presetMarks = localStorage.getItem(`qPresetMarks:${selectedCompetition}`);
+      const presetTotal = localStorage.getItem(`qPresetTotal:${selectedCompetition}`);
+      const dm = presetMarks ? parseInt(presetMarks) || 1 : 1;
+      const tt = presetTotal ? parseInt(presetTotal) || 0 : 0;
+      setDefaultMarks(dm);
+      setTargetTotal(tt);
+      // Pre-fill form marks with the new default
+      setFormData(prev => ({ ...prev, marks: dm }));
     }
   }, [selectedCompetition]);
 
