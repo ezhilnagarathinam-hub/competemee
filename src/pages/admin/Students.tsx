@@ -38,7 +38,7 @@ export default function Students() {
     // Poll student competition statuses so admin sees locks/submissions promptly
     const interval = setInterval(() => {
       fetchStudents();
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
