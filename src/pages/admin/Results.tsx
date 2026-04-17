@@ -26,6 +26,7 @@ export default function Results() {
   const [leaderboards, setLeaderboards] = useState<Record<string, LeaderboardEntry[]>>({});
   const [maxMarks, setMaxMarks] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loadingComps, setLoadingComps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -41,9 +42,10 @@ export default function Results() {
         const mostRecent = competitions[0];
         if (mostRecent && mostRecent.submission_count > 0) {
           loadLeaderboard(mostRecent.id, mostRecent, true);
+          setLastUpdated(new Date());
         }
       }
-    }, 10000); // every 10s
+    }, 5000); // every 5s
     return () => clearInterval(interval);
   }, [competitions]);
 
@@ -349,6 +351,19 @@ export default function Results() {
         </Card>
       ) : (
         <div className="space-y-4">
+          <div className="flex items-center justify-end gap-3">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                fetchCompetitions();
+                if (compsWithSubmissions[0]) loadLeaderboard(compsWithSubmissions[0].id, compsWithSubmissions[0], true);
+                setLastUpdated(new Date());
+              }}
+            >
+              Refresh
+            </button>
+            <div className="text-sm text-muted-foreground">{lastUpdated ? `Last updated ${lastUpdated.toLocaleTimeString()}` : ''}</div>
+          </div>
           {/* Most recent competition - always expanded */}
           {compsWithSubmissions.length > 0 && (
             <Card className="glass-card">
