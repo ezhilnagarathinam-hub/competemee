@@ -10,6 +10,8 @@ import type { Competition } from '@/types/database';
 interface LeaderboardEntry {
   student_id: string;
   student_name: string;
+  correct_marks: number;
+  negative_marks: number;
   total_marks: number;
   submitted_at: string | null;
   isLate?: boolean;
