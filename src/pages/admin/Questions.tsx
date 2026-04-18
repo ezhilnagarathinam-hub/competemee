@@ -57,9 +57,11 @@ export default function Questions() {
       const dm = presetMarks ? parseFloat(presetMarks) || 1 : 1;
       const tt = presetTotal ? parseInt(presetTotal) || 0 : 0;
       setDefaultMarks(dm);
+      setDefaultMarksText(String(dm));
       setTargetTotal(tt);
       // Pre-fill form marks with the new default
       setFormData(prev => ({ ...prev, marks: dm }));
+      setMarksText(String(dm));
     }
   }, [selectedCompetition]);
 
