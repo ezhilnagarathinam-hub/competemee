@@ -335,11 +335,30 @@ export default function TestInterface() {
       const totalMarks = Math.round((correctMarks - negativeMarks) * 100) / 100;
 
       // Auto-lock on any submit (partial or full).
-      // Use upsert to ensure a record exists and is updated atomically.
-      await supabase
+      // Find existing row first (composite uniqueness not guaranteed in DB), then update or insert.
+      const { data: existing } = await supabase
         .from('student_competitions')
-        .upsert([
-          {
+        .select('id')
+        .eq('student_id', studentId!)
+        .eq('competition_id', competitionId!)
+        .maybeSingle();
+
+      if (existing?.id) {
+        const { error: updErr } = await supabase
+          .from('student_competitions')
+          .update({
+            has_submitted: true,
+            submitted_at: new Date().toISOString(),
+            total_marks: totalMarks,
+            is_locked: true,
+            has_started: true,
+          })
+          .eq('id', existing.id);
+        if (updErr) throw updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from('student_competitions')
+          .insert([{
             student_id: studentId,
             competition_id: competitionId,
             has_submitted: true,
@@ -347,8 +366,9 @@ export default function TestInterface() {
             total_marks: totalMarks,
             is_locked: true,
             has_started: true,
-          },
-        ], { onConflict: ['student_id', 'competition_id'] });
+          }]);
+        if (insErr) throw insErr;
+      }
 
       // Set a localStorage flag so the dashboard can immediately reflect submission/lock
       try {
