@@ -23,7 +23,10 @@ export default function Questions() {
   const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
   const [ocrProcessing, setOcrProcessing] = useState(false);
   const [aiParsing, setAiParsing] = useState(false);
-  
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkParsing, setBulkParsing] = useState(false);
+
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
   const [targetTotal, setTargetTotal] = useState<number>(0);
 
