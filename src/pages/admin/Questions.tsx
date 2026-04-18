@@ -28,7 +28,9 @@ export default function Questions() {
   const [bulkParsing, setBulkParsing] = useState(false);
 
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
+  const [defaultMarksText, setDefaultMarksText] = useState<string>('1');
   const [targetTotal, setTargetTotal] = useState<number>(0);
+  const [marksText, setMarksText] = useState<string>('1');
 
   const [formData, setFormData] = useState({
     question_text: '',
