@@ -558,8 +558,54 @@ export default function Questions() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
+          {/* Bulk AI Parse Dialog */}
+          <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="border-primary/50 text-primary hover:bg-primary/10"
+                disabled={!selectedCompetition}
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Bulk AI Parse
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="glass-card max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="font-display">BULK AI PARSE — IMPORT MANY QUESTIONS</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Paste up to ~10 full questions (with options, answers, explanations) at once. AI will extract & import them all.
+                  Each will use the default marks: <span className="font-bold text-primary">{defaultMarks}</span>.
+                </p>
+                <Textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  placeholder={`Q1. What is the capital of France?\nA) London  B) Paris  C) Berlin  D) Madrid\nAnswer: B\nExplanation: Paris is the capital of France.\n\nQ2. ...`}
+                  rows={14}
+                  className="font-mono text-sm"
+                />
+                <Button
+                  onClick={handleBulkAiParse}
+                  disabled={bulkParsing || bulkText.trim().length < 30}
+                  className="w-full gradient-primary text-primary-foreground"
+                >
+                  {bulkParsing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Parsing & Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Parse & Import All
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
