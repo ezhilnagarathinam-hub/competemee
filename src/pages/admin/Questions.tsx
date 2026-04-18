@@ -248,6 +248,72 @@ export default function Questions() {
     }
   }
 
+  async function handleBulkAiParse() {
+    const text = bulkText.trim();
+    if (text.length < 30) {
+      toast.error('Paste at least one full question with options to parse');
+      return;
+    }
+    if (!selectedCompetition) {
+      toast.error('Select a competition first');
+      return;
+    }
+
+    setBulkParsing(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-questions-bulk`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Bulk AI parsing failed');
+      }
+
+      const { questions: parsedQs } = await response.json();
+      if (!parsedQs || parsedQs.length === 0) {
+        toast.error('Could not parse any questions. Try a clearer format.');
+        return;
+      }
+
+      // Insert all parsed questions
+      let added = 0;
+      for (const q of parsedQs) {
+        const nextNumber = questions.length + added + 1;
+        const { error } = await supabase
+          .from('questions')
+          .insert([{
+            competition_id: selectedCompetition,
+            question_number: nextNumber,
+            question_text: q.question_text || '',
+            option_a: q.option_a || '',
+            option_b: q.option_b || '',
+            option_c: q.option_c || '',
+            option_d: q.option_d || '',
+            correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : 'A',
+            marks: defaultMarks,
+            explanation: q.explanation || null,
+          }]);
+        if (!error) added++;
+      }
+
+      toast.success(`Imported ${added} of ${parsedQs.length} questions!`);
+      setBulkText('');
+      setBulkDialogOpen(false);
+      fetchQuestions(selectedCompetition);
+    } catch (error) {
+      console.error('Bulk parse error:', error);
+      toast.error(error instanceof Error ? error.message : 'Bulk parsing failed');
+    } finally {
+      setBulkParsing(false);
+    }
+  }
+
   function resetForm() {
     setFormData({
       question_text: '',
