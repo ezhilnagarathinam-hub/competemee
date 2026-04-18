@@ -33,17 +33,18 @@ export default function Results() {
     fetchCompetitions();
   }, []);
 
-  // Poll competitions and leaderboard periodically to reflect new submissions
+  // Poll competitions and ALL loaded leaderboards periodically to reflect new submissions
   useEffect(() => {
     const interval = setInterval(() => {
       fetchCompetitions();
-      // Also refresh currently loaded leaderboards (most recent)
+      // Refresh ALL competitions with submissions (real-time leaderboard)
       if (competitions && competitions.length > 0) {
-        const mostRecent = competitions[0];
-        if (mostRecent && mostRecent.submission_count > 0) {
-          loadLeaderboard(mostRecent.id, mostRecent, true);
-          setLastUpdated(new Date());
-        }
+        competitions.forEach((comp) => {
+          if (comp.submission_count > 0) {
+            loadLeaderboard(comp.id, comp, true);
+          }
+        });
+        setLastUpdated(new Date());
       }
     }, 5000); // every 5s
     return () => clearInterval(interval);
@@ -78,13 +79,12 @@ export default function Results() {
 
       setCompetitions(compsWithCount);
 
-      // Auto-load the most recent competition's leaderboard
-      if (compsWithCount.length > 0) {
-        const first = compsWithCount[0];
-        if (first.submission_count > 0) {
-          loadLeaderboard(first.id, first);
+      // Auto-load leaderboards for ALL competitions with submissions (real-time)
+      compsWithCount.forEach((c) => {
+        if (c.submission_count > 0) {
+          loadLeaderboard(c.id, c);
         }
-      }
+      });
     } catch (error) {
       console.error('Error fetching competitions:', error);
     } finally {
