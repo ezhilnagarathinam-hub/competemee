@@ -754,13 +754,21 @@ export default function Questions() {
                     type="text"
                     inputMode="decimal"
                     pattern="[0-9]*\.?[0-9]*"
-                    value={String(formData.marks)}
+                    value={marksText}
                     onChange={(e) => {
                       let cleaned = e.target.value.replace(/[^0-9.]/g, '');
                       const parts = cleaned.split('.');
                       if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-                      const val = cleaned ? parseFloat(cleaned) : 0;
-                      setFormData({ ...formData, marks: Number.isNaN(val) ? 0 : val });
+                      setMarksText(cleaned);
+                      const val = parseFloat(cleaned);
+                      if (Number.isFinite(val)) {
+                        setFormData({ ...formData, marks: val });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!marksText || marksText === '.') {
+                        setMarksText(String(formData.marks || defaultMarks || 1));
+                      }
                     }}
                     className="w-24"
                     required
@@ -787,9 +795,14 @@ export default function Questions() {
                 id="defaultMarks"
                 type="text"
                 inputMode="decimal"
-                pattern="[0-9]*\\.?[0-9]*"
-                value={String(defaultMarks)}
+                pattern="[0-9]*\.?[0-9]*"
+                value={defaultMarksText}
                 onChange={handleDefaultMarksInputChange}
+                onBlur={() => {
+                  if (!defaultMarksText || defaultMarksText === '.') {
+                    setDefaultMarksText(String(defaultMarks || 1));
+                  }
+                }}
                 className="w-32"
               />
               <p className="text-[11px] text-muted-foreground">
