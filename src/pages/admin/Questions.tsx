@@ -394,9 +394,10 @@ export default function Questions() {
       option_c: q.option_c,
       option_d: q.option_d,
       correct_answer: q.correct_answer,
-      marks: q.marks,
+      marks: Number(q.marks),
       explanation: (q as any).explanation || '',
     });
+    setMarksText(String(q.marks));
     setEditingId(q.id);
     setDialogOpen(true);
   }
