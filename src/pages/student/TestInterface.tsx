@@ -113,10 +113,16 @@ export default function TestInterface() {
         .eq('competition_id', competitionId)
         .maybeSingle();
 
+      if (status?.is_locked || status?.has_submitted) {
+        toast.error('This test is locked. Contact admin to unlock.');
+        navigate('/student');
+        return;
+      }
+
       if (status?.has_started) {
         setHasStarted(true);
         setReadyDialogOpen(false);
-        
+
         // Calculate remaining time
         if (status.started_at) {
           const startTime = new Date(status.started_at).getTime();
