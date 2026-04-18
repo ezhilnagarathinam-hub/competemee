@@ -28,7 +28,9 @@ export default function Questions() {
   const [bulkParsing, setBulkParsing] = useState(false);
 
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
+  const [defaultMarksText, setDefaultMarksText] = useState<string>('1');
   const [targetTotal, setTargetTotal] = useState<number>(0);
+  const [marksText, setMarksText] = useState<string>('1');
 
   const [formData, setFormData] = useState({
     question_text: '',
@@ -55,9 +57,11 @@ export default function Questions() {
       const dm = presetMarks ? parseFloat(presetMarks) || 1 : 1;
       const tt = presetTotal ? parseInt(presetTotal) || 0 : 0;
       setDefaultMarks(dm);
+      setDefaultMarksText(String(dm));
       setTargetTotal(tt);
       // Pre-fill form marks with the new default
       setFormData(prev => ({ ...prev, marks: dm }));
+      setMarksText(String(dm));
     }
   }, [selectedCompetition]);
 
@@ -315,6 +319,7 @@ export default function Questions() {
   }
 
   function resetForm() {
+    const m = defaultMarks || 1;
     setFormData({
       question_text: '',
       image_url: '',
@@ -323,9 +328,10 @@ export default function Questions() {
       option_c: '',
       option_d: '',
       correct_answer: 'A',
-      marks: defaultMarks || 1,
+      marks: m,
       explanation: '',
     });
+    setMarksText(String(m));
     setEditingId(null);
   }
 
@@ -359,14 +365,16 @@ export default function Questions() {
   }
 
   function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Allow typing digits and a single decimal point
+    // Allow typing digits and a single decimal point — preserve raw text so "2." stays visible
     let cleaned = e.target.value.replace(/[^0-9.]/g, '');
-    // remove extra dots
     const parts = cleaned.split('.');
     if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-    const num = cleaned ? parseFloat(cleaned) : 1;
-    // Call async handler but don't await here (UI updates immediately)
-    void handleDefaultMarksChange(num);
+    setDefaultMarksText(cleaned);
+    // Only commit when there's a valid finite number (not just "" or ".")
+    const num = parseFloat(cleaned);
+    if (Number.isFinite(num) && num > 0) {
+      void handleDefaultMarksChange(num);
+    }
   }
 
   function handleTargetTotalChange(value: number) {
@@ -386,9 +394,10 @@ export default function Questions() {
       option_c: q.option_c,
       option_d: q.option_d,
       correct_answer: q.correct_answer,
-      marks: q.marks,
+      marks: Number(q.marks),
       explanation: (q as any).explanation || '',
     });
+    setMarksText(String(q.marks));
     setEditingId(q.id);
     setDialogOpen(true);
   }
@@ -745,13 +754,21 @@ export default function Questions() {
                     type="text"
                     inputMode="decimal"
                     pattern="[0-9]*\.?[0-9]*"
-                    value={String(formData.marks)}
+                    value={marksText}
                     onChange={(e) => {
                       let cleaned = e.target.value.replace(/[^0-9.]/g, '');
                       const parts = cleaned.split('.');
                       if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-                      const val = cleaned ? parseFloat(cleaned) : 0;
-                      setFormData({ ...formData, marks: Number.isNaN(val) ? 0 : val });
+                      setMarksText(cleaned);
+                      const val = parseFloat(cleaned);
+                      if (Number.isFinite(val)) {
+                        setFormData({ ...formData, marks: val });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!marksText || marksText === '.') {
+                        setMarksText(String(formData.marks || defaultMarks || 1));
+                      }
                     }}
                     className="w-24"
                     required
@@ -778,9 +795,14 @@ export default function Questions() {
                 id="defaultMarks"
                 type="text"
                 inputMode="decimal"
-                pattern="[0-9]*\\.?[0-9]*"
-                value={String(defaultMarks)}
+                pattern="[0-9]*\.?[0-9]*"
+                value={defaultMarksText}
                 onChange={handleDefaultMarksInputChange}
+                onBlur={() => {
+                  if (!defaultMarksText || defaultMarksText === '.') {
+                    setDefaultMarksText(String(defaultMarks || 1));
+                  }
+                }}
                 className="w-32"
               />
               <p className="text-[11px] text-muted-foreground">
