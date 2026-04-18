@@ -363,14 +363,16 @@ export default function Questions() {
   }
 
   function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Allow typing digits and a single decimal point
+    // Allow typing digits and a single decimal point — preserve raw text so "2." stays visible
     let cleaned = e.target.value.replace(/[^0-9.]/g, '');
-    // remove extra dots
     const parts = cleaned.split('.');
     if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
-    const num = cleaned ? parseFloat(cleaned) : 1;
-    // Call async handler but don't await here (UI updates immediately)
-    void handleDefaultMarksChange(num);
+    setDefaultMarksText(cleaned);
+    // Only commit when there's a valid finite number (not just "" or ".")
+    const num = parseFloat(cleaned);
+    if (Number.isFinite(num) && num > 0) {
+      void handleDefaultMarksChange(num);
+    }
   }
 
   function handleTargetTotalChange(value: number) {
