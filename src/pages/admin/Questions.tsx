@@ -606,6 +606,9 @@ export default function Questions() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
