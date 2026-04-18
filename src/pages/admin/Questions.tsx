@@ -319,6 +319,7 @@ export default function Questions() {
   }
 
   function resetForm() {
+    const m = defaultMarks || 1;
     setFormData({
       question_text: '',
       image_url: '',
@@ -327,9 +328,10 @@ export default function Questions() {
       option_c: '',
       option_d: '',
       correct_answer: 'A',
-      marks: defaultMarks || 1,
+      marks: m,
       explanation: '',
     });
+    setMarksText(String(m));
     setEditingId(null);
   }
 
