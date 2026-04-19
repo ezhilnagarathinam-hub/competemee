@@ -268,68 +268,70 @@ export default function Results() {
           </div>
         )}
 
-        {/* Full table */}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">Rank</TableHead>
-              <TableHead>Player</TableHead>
-              <TableHead>Correct</TableHead>
-              <TableHead>Negative</TableHead>
-              <TableHead>Total Score</TableHead>
-              <TableHead>Percentage</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Submitted At</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.map((entry, index) => (
-              <TableRow key={entry.student_id} className="hover:bg-primary/5">
-                <TableCell>
-                  <div className="flex items-center justify-center">
-                    {getRankIcon(index + 1)}
-                  </div>
-                </TableCell>
-                <TableCell className="font-bold">{entry.student_name}</TableCell>
-                <TableCell>
-                  <span className="font-bold text-accent font-display">+{entry.correct_marks}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-bold text-destructive font-display">−{entry.negative_marks}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-bold text-primary font-display">{entry.total_marks}</span>
-                  <span className="text-muted-foreground">/{max}</span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-2 bg-muted/50 rounded-full overflow-hidden">
-                      <div
-                        className="h-full gradient-primary rounded-full"
-                        style={{ width: `${safePercentage(entry.total_marks, max)}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {safePercentage(entry.total_marks, max)}%
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {entry.isLate ? (
-                    <span className="px-2 py-1 text-xs font-bold rounded-full bg-destructive/20 text-destructive">LATE</span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-bold rounded-full bg-accent/20 text-accent">ON TIME</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {entry.submitted_at
-                    ? new Date(entry.submitted_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' })
-                    : '-'}
-                </TableCell>
+        {/* Full table - horizontal scroll on mobile */}
+        <div className="w-full overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Rank</TableHead>
+                <TableHead>Player</TableHead>
+                <TableHead>Correct</TableHead>
+                <TableHead>Negative</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>%</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Submitted</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry, index) => (
+                <TableRow key={entry.student_id} className="hover:bg-primary/5">
+                  <TableCell>
+                    <div className="flex items-center justify-center">
+                      {getRankIcon(index + 1)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-bold whitespace-nowrap">{entry.student_name}</TableCell>
+                  <TableCell>
+                    <span className="font-bold text-accent font-display">+{entry.correct_marks}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-destructive font-display">−{entry.negative_marks}</span>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <span className="font-bold text-primary font-display">{entry.total_marks}</span>
+                    <span className="text-muted-foreground">/{max}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 lg:w-24 h-2 bg-muted/50 rounded-full overflow-hidden">
+                        <div
+                          className="h-full gradient-primary rounded-full"
+                          style={{ width: `${safePercentage(entry.total_marks, max)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {safePercentage(entry.total_marks, max)}%
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {entry.isLate ? (
+                      <span className="px-2 py-1 text-xs font-bold rounded-full bg-destructive/20 text-destructive">LATE</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-bold rounded-full bg-accent/20 text-accent">ON TIME</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {entry.submitted_at
+                      ? new Date(entry.submitted_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' })
+                      : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
   }
