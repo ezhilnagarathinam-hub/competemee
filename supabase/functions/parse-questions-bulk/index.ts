@@ -26,10 +26,13 @@ Deno.serve(async (req) => {
     const prompt = `You are a bulk question parser for an MCQ exam platform. The following pasted text contains MULTIPLE questions (typically 5-20 of them). Extract every question into a structured array.
 
 Each question may include:
+- A passage/case/stimulus followed by one or more related questions
 - Question text (could be assertion-reason, multi-statement, direct, fill-in-the-blank, mixed Tamil/English, etc.)
 - Four options (labeled A/B/C/D, 1/2/3/4, a/b/c/d, or similar)
 - A correct answer (e.g. "Answer: A", "Correct: B", "Ans - C")
 - An explanation (labeled "Explanation:", "Reason:", "Solution:" — optional)
+
+For passage-based questions, include the relevant passage/case text together with each related question inside question_text so nothing is lost.
 
 Return a JSON object with this exact structure:
 {
@@ -48,6 +51,7 @@ Return a JSON object with this exact structure:
 
 Rules:
 - Extract every question you can find — do not skip any.
+- If a shared passage applies to multiple questions, repeat the needed passage context inside each question_text.
 - If options are missing for a question, fill empty string "".
 - Return ONLY the JSON object, no other text.
 

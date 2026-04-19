@@ -24,6 +24,7 @@ export default function TestInterface() {
   const [readyDialogOpen, setReadyDialogOpen] = useState(true);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [statusId, setStatusId] = useState<string | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -112,6 +113,14 @@ export default function TestInterface() {
         .eq('student_id', studentId)
         .eq('competition_id', competitionId)
         .maybeSingle();
+
+      if (status?.id) {
+        setStatusId(status.id);
+      }
+
+      if (status?.current_question && status.current_question > 0 && status.current_question <= ((qs as Question[]) || []).length) {
+        setCurrentIndex(status.current_question - 1);
+      }
 
       if (status?.is_locked || status?.has_submitted) {
         toast.error('This test is locked. Contact admin to unlock.');
@@ -218,18 +227,24 @@ export default function TestInterface() {
         .eq('competition_id', competitionId)
         .maybeSingle();
 
-      if (!existing) {
-        await supabase.from('student_competitions').insert([{
+       if (!existing) {
+         const { data: inserted, error } = await supabase.from('student_competitions').insert([{
           student_id: studentId,
           competition_id: competitionId,
           has_started: true,
           started_at: new Date().toISOString(),
-        }]);
+           current_question: 1,
+           is_locked: false,
+         }]).select('id').single();
+         if (error) throw error;
+         setStatusId(inserted.id);
       } else {
-        await supabase
+         const { error } = await supabase
           .from('student_competitions')
-          .update({ has_started: true, started_at: new Date().toISOString() })
+           .update({ has_started: true, started_at: existing.started_at || new Date().toISOString(), current_question: existing.current_question || 1 })
           .eq('id', existing.id);
+         if (error) throw error;
+         setStatusId(existing.id);
       }
 
       setHasStarted(true);
@@ -247,8 +262,8 @@ export default function TestInterface() {
     try {
       const existing = answers.get(questionId);
       
-      if (existing) {
-        await supabase
+      if (existing?.id) {
+        const { error } = await supabase
           .from('student_answers')
           .update({
             selected_answer: answer,
@@ -256,8 +271,9 @@ export default function TestInterface() {
             is_correct: isCorrect,
           })
           .eq('id', existing.id);
+        if (error) throw error;
       } else {
-        await supabase
+        const { data: insertedAnswer, error } = await supabase
           .from('student_answers')
           .insert([{
             student_id: studentId,
@@ -266,7 +282,16 @@ export default function TestInterface() {
             selected_answer: answer,
             is_marked_for_review: isReview,
             is_correct: isCorrect,
-          }]);
+          }])
+          .select()
+          .single();
+        if (error) throw error;
+        setAnswers((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(questionId, insertedAnswer as StudentAnswer);
+          return newMap;
+        });
+        return;
       }
 
       // Update local state
@@ -296,6 +321,23 @@ export default function TestInterface() {
     const currentAnswer = answers.get(currentQ.id);
     saveAnswer(currentQ.id, option, currentAnswer?.is_marked_for_review || false);
   };
+
+  useEffect(() => {
+    if (!statusId || !hasStarted || !competitionId || !studentId || questions.length === 0) return;
+
+    const questionNumber = questions[currentIndex]?.question_number;
+    if (!questionNumber) return;
+
+    void supabase
+      .from('student_competitions')
+      .update({
+        current_question: questionNumber,
+        last_seen: new Date().toISOString(),
+      })
+      .eq('id', statusId)
+      .eq('student_id', studentId)
+      .eq('competition_id', competitionId);
+  }, [statusId, hasStarted, competitionId, studentId, questions, currentIndex]);
 
   const handleMarkReview = () => {
     const currentQ = questions[currentIndex];
@@ -383,6 +425,7 @@ export default function TestInterface() {
         // ignore
       }
 
+      setSubmitDialogOpen(false);
       toast.success('Test submitted successfully!');
       navigate('/student');
     } catch (error) {

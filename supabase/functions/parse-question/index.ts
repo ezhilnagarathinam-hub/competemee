@@ -36,10 +36,14 @@ Use intelligence to understand the format. The question might be:
 - Multi-statement: "Consider the following statements: I. ... II. ... Which of the above is/are correct?"
 - Standard MCQ with options
 - Mixed Tamil/English content
+- Passage-based questions where a passage/case/stimulus appears before the question
+
+If a passage is present, include BOTH the full passage and the actual question together inside question_text in the correct reading order.
+Do not put passage text into options, answer, or explanation.
 
 Return a JSON object with this exact structure:
 {
-  "question_text": "The full question text including any assertion/reason/statements",
+  "question_text": "The full question text including any passage/case, assertion/reason, and statements",
   "option_a": "First option text only (without A. or 1. prefix)",
   "option_b": "Second option text only",
   "option_c": "Third option text only", 
