@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useStudentAuth } from '@/lib/auth';
 
 export function StudentLayout() {
-  const { isStudent, studentName, logout } = useStudentAuth();
+  const { isStudent, studentName, logout, hydrated } = useStudentAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isStudent) {
+    if (hydrated && !isStudent) {
       navigate('/student/login');
     }
-  }, [isStudent, navigate]);
+  }, [hydrated, isStudent, navigate]);
 
-  if (!isStudent) {
+  if (!hydrated || !isStudent) {
     return null;
   }
 

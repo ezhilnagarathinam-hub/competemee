@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Calendar, Clock, Play, CheckCircle, Lock, Zap, Eye, Phone, Medal, Award, Timer } from 'lucide-react';
+import { Trophy, Calendar, Clock, Play, Lock, Zap, Eye, Phone, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useStudentAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, StudentCompetition } from '@/types/database';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { formatTime12 } from '@/lib/timeFormat';
 
 interface CompetitionWithStatus extends Competition {
@@ -24,24 +23,7 @@ export default function StudentDashboard() {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (studentId) {
-      fetchCompetitions();
-    }
-  }, [studentId]);
-
-  // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (studentId) {
-      interval = setInterval(() => {
-        fetchCompetitions();
-      }, 5000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [studentId]);
-
-  async function fetchCompetitions() {
+  const fetchCompetitions = useCallback(async () => {
     try {
       // Fetch all active competitions
       const { data: allComps, error: compError } = await supabase
@@ -71,7 +53,7 @@ export default function StudentDashboard() {
         const localFlagRaw = (() => {
           try {
             return localStorage.getItem(`submittedCompetition:${comp.id}`);
-          } catch (e) {
+          } catch {
             return null;
           }
         })();
@@ -100,10 +82,10 @@ export default function StudentDashboard() {
               usedLocal = true;
             } else {
               // stale or server already updated: remove local flag
-              try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (e) {}
+              try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch {}
             }
-          } catch (e) {
-            try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (er) {}
+          } catch {
+            try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch {}
           }
 
           if (usedLocal) {
@@ -139,7 +121,24 @@ export default function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [studentId]);
+
+  useEffect(() => {
+    if (studentId) {
+      fetchCompetitions();
+    }
+  }, [studentId, fetchCompetitions]);
+
+  // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (studentId) {
+      interval = setInterval(() => {
+        fetchCompetitions();
+      }, 5000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [studentId, fetchCompetitions]);
 
   function canStartTest(comp: CompetitionWithStatus): boolean {
     if (!comp.isEnrolled) return false;
@@ -187,6 +186,10 @@ export default function StudentDashboard() {
       if (!existing) {
         toast.error('You are not enrolled in this competition');
         return;
+      } else if (existing.has_submitted || existing.is_locked) {
+        toast.error('This test is already submitted and locked. Contact admin to unlock.');
+        fetchCompetitions();
+        return;
       } else if (!existing.has_started) {
         const { error } = await supabase
           .from('student_competitions')
@@ -227,9 +230,10 @@ export default function StudentDashboard() {
         <div className="grid gap-4">
           {competitions.map((comp) => {
             const canStart = canStartTest(comp);
-            const hasSubmitted = comp.studentStatus?.has_submitted;
-            const hasStarted = comp.studentStatus?.has_started;
-            const isLocked = comp.studentStatus?.is_locked;
+            const hasSubmitted = !!comp.studentStatus?.has_submitted;
+            const hasStarted = !!comp.studentStatus?.has_started;
+            const isLocked = !!comp.studentStatus?.is_locked;
+            const isCompleted = hasSubmitted || isLocked;
             const isEnrolled = comp.isEnrolled;
 
             return (
@@ -267,7 +271,7 @@ export default function StudentDashboard() {
                         <span>{formatDuration(comp.duration_minutes)}</span>
                       </div>
                       {/* Countdown timer */}
-                      {isEnrolled && !hasSubmitted && !isLocked && (
+                      {isEnrolled && !isCompleted && (
                         <CountdownTimer comp={comp} />
                       )}
                     </div>
@@ -282,7 +286,7 @@ export default function StudentDashboard() {
                           <Phone className="w-4 h-4 mr-2" />
                           Enroll Now
                         </Button>
-                      ) : isLocked ? (
+                      ) : isCompleted ? (
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
                             <Lock className="w-5 h-5" />
@@ -292,12 +296,7 @@ export default function StudentDashboard() {
                             <div className="text-[11px] text-muted-foreground mt-1">Locked on {format(parseISO(comp.studentStatus.submitted_at), 'MMM dd, yyyy HH:mm')}</div>
                           )}
                         </div>
-                      ) : hasSubmitted ? (
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 text-accent border border-accent/30">
-                          <CheckCircle className="w-5 h-5" />
-                          <span className="font-bold font-display">DONE</span>
-                        </div>
-                      ) : hasStarted && !canStart ? (
+                      ) : hasStarted ? (
                         <Button
                           onClick={() => navigate(`/student/test/${comp.id}`)}
                           className="gradient-primary text-primary-foreground shadow-primary compete-btn"
@@ -434,13 +433,7 @@ function StudentResults() {
   const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  useEffect(() => {
-    if (studentId) {
-      fetchResults();
-    }
-  }, [studentId]);
-
-  async function fetchResults() {
+  const fetchResults = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('student_competitions')
@@ -449,7 +442,7 @@ function StudentResults() {
           competitions!inner(*)
         `)
         .eq('student_id', studentId)
-        .eq('has_submitted', true);
+        .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)');
 
       if (error) throw error;
 
@@ -511,7 +504,15 @@ function StudentResults() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [studentId]);
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    fetchResults();
+    const interval = setInterval(fetchResults, 5000);
+    return () => clearInterval(interval);
+  }, [studentId, fetchResults]);
 
   async function viewDetails(result: any) {
     setSelectedResult(result);
