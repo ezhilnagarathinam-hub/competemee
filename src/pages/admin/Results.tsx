@@ -51,7 +51,7 @@ export default function Results() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [competitions.length]);
 
-  async function fetchCompetitions() {
+  async function fetchCompetitions(silent = false) {
     try {
       const { data: comps, error } = await supabase
         .from('competitions')
