@@ -433,14 +433,6 @@ function StudentResults() {
   const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!studentId) return;
-
-    fetchResults();
-    const interval = setInterval(fetchResults, 5000);
-    return () => clearInterval(interval);
-  }, [studentId, fetchResults]);
-
   const fetchResults = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -513,6 +505,14 @@ function StudentResults() {
       setLoading(false);
     }
   }, [studentId]);
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    fetchResults();
+    const interval = setInterval(fetchResults, 5000);
+    return () => clearInterval(interval);
+  }, [studentId, fetchResults]);
 
   async function viewDetails(result: any) {
     setSelectedResult(result);
