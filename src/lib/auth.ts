@@ -31,8 +31,9 @@ export const useAdminAuth = create<AdminAuth>()(
     }),
     {
       name: 'compete-me-admin-auth',
-      onRehydrateStorage: () => () => {
-        set({ hydrated: true });
+      onRehydrateStorage: () => (state) => {
+        state?.login;
+        useAdminAuth.setState({ hydrated: true });
       },
     }
   )
@@ -50,8 +51,9 @@ export const useStudentAuth = create<StudentAuth>()(
     }),
     {
       name: 'compete-me-student-auth',
-      onRehydrateStorage: () => () => {
-        set({ hydrated: true });
+      onRehydrateStorage: () => (state) => {
+        state?.login;
+        useStudentAuth.setState({ hydrated: true });
       },
     }
   )

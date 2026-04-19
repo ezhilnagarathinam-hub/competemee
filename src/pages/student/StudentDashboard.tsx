@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Calendar, Clock, Play, CheckCircle, Lock, Zap, Eye, Phone, Medal, Award, Timer } from 'lucide-react';
+import { Trophy, Calendar, Clock, Play, Lock, Zap, Eye, Phone, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useStudentAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, StudentCompetition } from '@/types/database';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { formatTime12 } from '@/lib/timeFormat';
 
 interface CompetitionWithStatus extends Competition {
@@ -71,7 +70,7 @@ export default function StudentDashboard() {
         const localFlagRaw = (() => {
           try {
             return localStorage.getItem(`submittedCompetition:${comp.id}`);
-          } catch (e) {
+          } catch {
             return null;
           }
         })();
@@ -100,10 +99,10 @@ export default function StudentDashboard() {
               usedLocal = true;
             } else {
               // stale or server already updated: remove local flag
-              try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (e) {}
+              try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch {}
             }
-          } catch (e) {
-            try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch (er) {}
+          } catch {
+            try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch {}
           }
 
           if (usedLocal) {
