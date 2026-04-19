@@ -227,9 +227,10 @@ export default function StudentDashboard() {
         <div className="grid gap-4">
           {competitions.map((comp) => {
             const canStart = canStartTest(comp);
-            const hasSubmitted = comp.studentStatus?.has_submitted;
-            const hasStarted = comp.studentStatus?.has_started;
-            const isLocked = comp.studentStatus?.is_locked;
+            const hasSubmitted = !!comp.studentStatus?.has_submitted;
+            const hasStarted = !!comp.studentStatus?.has_started;
+            const isLocked = !!comp.studentStatus?.is_locked;
+            const isCompleted = hasSubmitted || isLocked;
             const isEnrolled = comp.isEnrolled;
 
             return (
@@ -267,7 +268,7 @@ export default function StudentDashboard() {
                         <span>{formatDuration(comp.duration_minutes)}</span>
                       </div>
                       {/* Countdown timer */}
-                      {isEnrolled && !hasSubmitted && !isLocked && (
+                      {isEnrolled && !isCompleted && (
                         <CountdownTimer comp={comp} />
                       )}
                     </div>
@@ -282,7 +283,7 @@ export default function StudentDashboard() {
                           <Phone className="w-4 h-4 mr-2" />
                           Enroll Now
                         </Button>
-                      ) : isLocked ? (
+                      ) : isCompleted ? (
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
                             <Lock className="w-5 h-5" />
@@ -292,12 +293,7 @@ export default function StudentDashboard() {
                             <div className="text-[11px] text-muted-foreground mt-1">Locked on {format(parseISO(comp.studentStatus.submitted_at), 'MMM dd, yyyy HH:mm')}</div>
                           )}
                         </div>
-                      ) : hasSubmitted ? (
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 text-accent border border-accent/30">
-                          <CheckCircle className="w-5 h-5" />
-                          <span className="font-bold font-display">DONE</span>
-                        </div>
-                      ) : hasStarted && !canStart ? (
+                      ) : hasStarted ? (
                         <Button
                           onClick={() => navigate(`/student/test/${comp.id}`)}
                           className="gradient-primary text-primary-foreground shadow-primary compete-btn"
@@ -435,9 +431,11 @@ function StudentResults() {
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
-    if (studentId) {
-      fetchResults();
-    }
+    if (!studentId) return;
+
+    fetchResults();
+    const interval = setInterval(fetchResults, 5000);
+    return () => clearInterval(interval);
   }, [studentId]);
 
   async function fetchResults() {
