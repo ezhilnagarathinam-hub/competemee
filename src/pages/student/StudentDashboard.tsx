@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Calendar, Clock, Play, Lock, Zap, Eye, Phone, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,24 +23,7 @@ export default function StudentDashboard() {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (studentId) {
-      fetchCompetitions();
-    }
-  }, [studentId]);
-
-  // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (studentId) {
-      interval = setInterval(() => {
-        fetchCompetitions();
-      }, 5000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [studentId]);
-
-  async function fetchCompetitions() {
+  const fetchCompetitions = useCallback(async () => {
     try {
       // Fetch all active competitions
       const { data: allComps, error: compError } = await supabase
@@ -138,7 +121,24 @@ export default function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [studentId]);
+
+  useEffect(() => {
+    if (studentId) {
+      fetchCompetitions();
+    }
+  }, [studentId, fetchCompetitions]);
+
+  // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (studentId) {
+      interval = setInterval(() => {
+        fetchCompetitions();
+      }, 5000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [studentId, fetchCompetitions]);
 
   function canStartTest(comp: CompetitionWithStatus): boolean {
     if (!comp.isEnrolled) return false;
@@ -439,9 +439,9 @@ function StudentResults() {
     fetchResults();
     const interval = setInterval(fetchResults, 5000);
     return () => clearInterval(interval);
-  }, [studentId]);
+  }, [studentId, fetchResults]);
 
-  async function fetchResults() {
+  const fetchResults = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('student_competitions')
@@ -512,7 +512,7 @@ function StudentResults() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [studentId]);
 
   async function viewDetails(result: any) {
     setSelectedResult(result);
