@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AdminAuth {
   isAdmin: boolean;
@@ -16,18 +17,32 @@ interface StudentAuth {
   logout: () => void;
 }
 
-export const useAdminAuth = create<AdminAuth>((set) => ({
-  isAdmin: false,
-  adminId: null,
-  adminName: null,
-  login: (id, name) => set({ isAdmin: true, adminId: id, adminName: name }),
-  logout: () => set({ isAdmin: false, adminId: null, adminName: null }),
-}));
+export const useAdminAuth = create<AdminAuth>()(
+  persist(
+    (set) => ({
+      isAdmin: false,
+      adminId: null,
+      adminName: null,
+      login: (id, name) => set({ isAdmin: true, adminId: id, adminName: name }),
+      logout: () => set({ isAdmin: false, adminId: null, adminName: null }),
+    }),
+    {
+      name: 'compete-me-admin-auth',
+    }
+  )
+);
 
-export const useStudentAuth = create<StudentAuth>((set) => ({
-  isStudent: false,
-  studentId: null,
-  studentName: null,
-  login: (id, name) => set({ isStudent: true, studentId: id, studentName: name }),
-  logout: () => set({ isStudent: false, studentId: null, studentName: null }),
-}));
+export const useStudentAuth = create<StudentAuth>()(
+  persist(
+    (set) => ({
+      isStudent: false,
+      studentId: null,
+      studentName: null,
+      login: (id, name) => set({ isStudent: true, studentId: id, studentName: name }),
+      logout: () => set({ isStudent: false, studentId: null, studentName: null }),
+    }),
+    {
+      name: 'compete-me-student-auth',
+    }
+  )
+);

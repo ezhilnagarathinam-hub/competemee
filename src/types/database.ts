@@ -58,8 +58,10 @@ export interface StudentCompetition {
   id: string;
   student_id: string;
   competition_id: string;
+  current_question?: number | null;
   has_started: boolean;
   has_submitted: boolean;
+  last_seen?: string | null;
   started_at: string | null;
   submitted_at: string | null;
   total_marks: number;
