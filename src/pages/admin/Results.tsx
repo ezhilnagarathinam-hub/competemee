@@ -34,21 +34,22 @@ export default function Results() {
   }, []);
 
   // Poll competitions and ALL loaded leaderboards periodically to reflect new submissions
+  // Use silent background refresh to avoid flicker
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchCompetitions();
-      // Refresh ALL competitions with submissions (real-time leaderboard)
+      fetchCompetitions(true);
       if (competitions && competitions.length > 0) {
         competitions.forEach((comp) => {
           if (comp.submission_count > 0) {
-            loadLeaderboard(comp.id, comp, true);
+            loadLeaderboard(comp.id, comp, true, true);
           }
         });
         setLastUpdated(new Date());
       }
-    }, 5000); // every 5s
+    }, 15000); // every 15s (less aggressive)
     return () => clearInterval(interval);
-  }, [competitions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competitions.length]);
 
   async function fetchCompetitions() {
     try {
