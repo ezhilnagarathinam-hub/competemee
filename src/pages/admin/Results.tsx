@@ -83,20 +83,20 @@ export default function Results() {
       // Auto-load leaderboards for ALL competitions with submissions (real-time)
       compsWithCount.forEach((c) => {
         if (c.submission_count > 0) {
-          loadLeaderboard(c.id, c);
+          loadLeaderboard(c.id, c, false, silent);
         }
       });
     } catch (error) {
       console.error('Error fetching competitions:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
-  async function loadLeaderboard(compId: string, comp?: Competition, forceRefresh = false) {
+  async function loadLeaderboard(compId: string, comp?: Competition, forceRefresh = false, silent = false) {
     if (!forceRefresh && leaderboards[compId]) return; // already loaded
 
-    setLoadingComps(prev => new Set(prev).add(compId));
+    if (!silent) setLoadingComps(prev => new Set(prev).add(compId));
 
     try {
       const compData = comp || competitions.find(c => c.id === compId);
