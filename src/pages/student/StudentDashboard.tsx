@@ -187,6 +187,10 @@ export default function StudentDashboard() {
       if (!existing) {
         toast.error('You are not enrolled in this competition');
         return;
+      } else if (existing.has_submitted || existing.is_locked) {
+        toast.error('This test is already submitted and locked. Contact admin to unlock.');
+        fetchCompetitions();
+        return;
       } else if (!existing.has_started) {
         const { error } = await supabase
           .from('student_competitions')
@@ -447,7 +451,7 @@ function StudentResults() {
           competitions!inner(*)
         `)
         .eq('student_id', studentId)
-        .eq('has_submitted', true);
+        .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)');
 
       if (error) throw error;
 
