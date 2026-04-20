@@ -213,7 +213,7 @@
 
   .compete-btn {
     @apply relative overflow-hidden font-bold uppercase tracking-wider;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .compete-btn::before {
