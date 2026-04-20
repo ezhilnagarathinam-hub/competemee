@@ -259,6 +259,15 @@ export default function TestInterface() {
           const startTime = new Date(status.started_at).getTime();
           const elapsed = Math.floor((Date.now() - startTime) / 1000);
           const remaining = (comp.duration_minutes * 60) - elapsed;
+
+          if (remaining <= 0 && !status?.has_submitted && !status?.is_locked) {
+            await finalizeSubmission({
+              submittedAt: status.last_seen || new Date().toISOString(),
+              successMessage: 'Time ended. Your test was saved and locked.',
+            });
+            return;
+          }
+
           setTimeLeft(Math.max(0, remaining));
         }
       }
@@ -378,65 +387,98 @@ export default function TestInterface() {
   };
 
   const saveAnswer = useCallback(async (questionId: string, answer: 'A' | 'B' | 'C' | 'D' | null, isReview: boolean) => {
+    if (!studentId || !competitionId || submittingRef.current) return;
+
     const question = questions.find(q => q.id === questionId);
     const isCorrect = answer ? answer === question?.correct_answer : null;
+    const pendingState = queuedAnswerSavesRef.current[questionId] || { saving: false, pending: null };
+    pendingState.pending = { answer, isReview };
+    queuedAnswerSavesRef.current[questionId] = pendingState;
 
-    try {
-      const existing = answers.get(questionId);
-      
-      if (existing?.id) {
-        const { error } = await supabase
-          .from('student_answers')
-          .update({
-            selected_answer: answer,
-            is_marked_for_review: isReview,
-            is_correct: isCorrect,
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { data: insertedAnswer, error } = await supabase
-          .from('student_answers')
-          .insert([{
-            student_id: studentId,
-            question_id: questionId,
-            competition_id: competitionId,
-            selected_answer: answer,
-            is_marked_for_review: isReview,
-            is_correct: isCorrect,
-          }])
-          .select()
-          .single();
-        if (error) throw error;
-        setAnswers((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(questionId, insertedAnswer as StudentAnswer);
-          return newMap;
-        });
-        return;
+    setAnswers((prev) => {
+      const existing = prev.get(questionId);
+      const next = new Map(prev);
+      next.set(questionId, {
+        ...existing,
+        id: existing?.id || '',
+        student_id: studentId,
+        question_id: questionId,
+        competition_id: competitionId,
+        selected_answer: answer,
+        is_marked_for_review: isReview,
+        is_correct: isCorrect,
+        created_at: existing?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as StudentAnswer);
+      return next;
+    });
+
+    if (pendingState.saving) return;
+    pendingState.saving = true;
+
+    while (pendingState.pending) {
+      const nextSave = pendingState.pending;
+      pendingState.pending = null;
+      const currentExisting = answersRef.current.get(questionId);
+      const nextIsCorrect = nextSave.answer ? nextSave.answer === question?.correct_answer : null;
+
+      try {
+        if (currentExisting?.id) {
+          const { error } = await supabase
+            .from('student_answers')
+            .update({
+              selected_answer: nextSave.answer,
+              is_marked_for_review: nextSave.isReview,
+              is_correct: nextIsCorrect,
+            })
+            .eq('id', currentExisting.id);
+
+          if (error) throw error;
+
+          setAnswers((prev) => {
+            const next = new Map(prev);
+            const existing = next.get(questionId);
+            if (existing) {
+              next.set(questionId, {
+                ...existing,
+                selected_answer: nextSave.answer,
+                is_marked_for_review: nextSave.isReview,
+                is_correct: nextIsCorrect,
+                updated_at: new Date().toISOString(),
+              });
+            }
+            return next;
+          });
+        } else {
+          const { data: insertedAnswer, error } = await supabase
+            .from('student_answers')
+            .insert([{ 
+              student_id: studentId,
+              question_id: questionId,
+              competition_id: competitionId,
+              selected_answer: nextSave.answer,
+              is_marked_for_review: nextSave.isReview,
+              is_correct: nextIsCorrect,
+            }])
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          setAnswers((prev) => {
+            const next = new Map(prev);
+            next.set(questionId, insertedAnswer as StudentAnswer);
+            return next;
+          });
+        }
+      } catch (error) {
+        console.error('Error saving answer:', error);
+        toast.error('Failed to save answer');
       }
-
-      // Update local state
-      setAnswers((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(questionId, {
-          ...existing,
-          id: existing?.id || '',
-          student_id: studentId!,
-          question_id: questionId,
-          competition_id: competitionId!,
-          selected_answer: answer,
-          is_marked_for_review: isReview,
-          is_correct: isCorrect,
-          created_at: existing?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        return newMap;
-      });
-    } catch (error) {
-      console.error('Error saving answer:', error);
     }
-  }, [answers, questions, studentId, competitionId]);
+
+    pendingState.saving = false;
+  }, [competitionId, questions, studentId]);
 
   const handleSelectAnswer = (option: 'A' | 'B' | 'C' | 'D') => {
     const currentQ = questions[currentIndex];
@@ -478,82 +520,22 @@ export default function TestInterface() {
 
   const handleAutoSubmit = async () => {
     setTimeExpired(true);
-    toast.error('Time is up! You cannot submit the test as time has ended. Contact Admin for recovery.');
+    await finalizeSubmission({
+      submittedAt: new Date().toISOString(),
+      successMessage: 'Time ended. Your test was saved and locked.',
+    });
   };
 
   const submitTest = async () => {
     if (timeExpired) {
-      toast.error('You cannot submit the test as time has ended. Contact Admin for recovery.');
+      toast.error('This test is already locked.');
       return;
     }
-    try {
-      // Calculate scores: correct marks - negative marks (1/3 of question marks per wrong answer)
-      let correctMarks = 0;
-      let negativeMarks = 0;
-      let answeredCount = 0;
-      questions.forEach((q) => {
-        const ans = answers.get(q.id);
-        if (!ans || !ans.selected_answer) return; // unattempted: no penalty
-        answeredCount += 1;
-        if (ans.is_correct) {
-          correctMarks += q.marks;
-        } else {
-          negativeMarks += q.marks / 3;
-        }
-      });
-      // Round to 2 decimals
-      const totalMarks = Math.round((correctMarks - negativeMarks) * 100) / 100;
 
-      // Auto-lock on any submit (partial or full).
-      // Find existing row first (composite uniqueness not guaranteed in DB), then update or insert.
-      const { data: existing } = await supabase
-        .from('student_competitions')
-        .select('id')
-        .eq('student_id', studentId!)
-        .eq('competition_id', competitionId!)
-        .maybeSingle();
-
-      if (existing?.id) {
-        const { error: updErr } = await supabase
-          .from('student_competitions')
-          .update({
-            has_submitted: true,
-            submitted_at: new Date().toISOString(),
-            total_marks: totalMarks,
-            is_locked: true,
-            has_started: true,
-          })
-          .eq('id', existing.id);
-        if (updErr) throw updErr;
-      } else {
-        const { error: insErr } = await supabase
-          .from('student_competitions')
-          .insert([{
-            student_id: studentId,
-            competition_id: competitionId,
-            has_submitted: true,
-            submitted_at: new Date().toISOString(),
-            total_marks: totalMarks,
-            is_locked: true,
-            has_started: true,
-          }]);
-        if (insErr) throw insErr;
-      }
-
-      // Set a localStorage flag so the dashboard can immediately reflect submission/lock
-      try {
-        localStorage.setItem(`submittedCompetition:${competitionId}`, new Date().toISOString());
-      } catch (e) {
-        // ignore
-      }
-
-      setSubmitDialogOpen(false);
-      toast.success('Test submitted successfully!');
-      navigate('/student');
-    } catch (error) {
-      console.error('Error submitting test:', error);
-      toast.error('Failed to submit test');
-    }
+    await finalizeSubmission({
+      submittedAt: new Date().toISOString(),
+      successMessage: 'Test submitted successfully!',
+    });
   };
 
   const handleFinalSubmit = () => {

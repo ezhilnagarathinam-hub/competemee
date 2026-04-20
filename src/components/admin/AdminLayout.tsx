@@ -25,8 +25,8 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen bg-background">
       <AdminSidebar />
-      <main className="lg:ml-64 p-4 lg:p-8 pt-20 lg:pt-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="lg:ml-64 px-4 py-4 pt-20 lg:px-6 lg:py-6 lg:pt-6">
+        <div className="w-full">
           <Outlet />
         </div>
       </main>
