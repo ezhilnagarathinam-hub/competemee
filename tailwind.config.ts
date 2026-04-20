@@ -14,9 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Space Grotesk', 'system-ui', 'sans-serif'],
-        display: ['Orbitron', 'system-ui', 'sans-serif'],
-        mono: ['Orbitron', 'monospace'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+        fun: ['Fredoka', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

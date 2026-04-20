@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -83,12 +83,12 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 }
 
@@ -156,7 +156,7 @@
 
   .timer-display {
     @apply text-2xl font-bold tracking-widest;
-    font-family: 'Orbitron', monospace;
+    font-family: 'Outfit', sans-serif;
   }
 
   .question-option {
@@ -178,7 +178,7 @@
 
   .question-nav-btn {
     @apply w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .question-nav-btn.unanswered {
@@ -213,7 +213,7 @@
 
   .compete-btn {
     @apply relative overflow-hidden font-bold uppercase tracking-wider;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .compete-btn::before {
