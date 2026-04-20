@@ -256,28 +256,19 @@ export default function StudentDashboard() {
                       {comp.description && (
                         <p className="text-sm text-muted-foreground mb-3">{comp.description}</p>
                       )}
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/60 text-foreground font-medium">
-                          <Calendar className="w-4 h-4 text-primary" />
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
                           {comp.end_date && comp.end_date !== comp.date
                             ? `${format(parseISO(comp.date), 'MMM dd')} – ${format(parseISO(comp.end_date), 'MMM dd, yyyy')}`
                             : format(parseISO(comp.date), 'MMM dd, yyyy')
                           }
                         </span>
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/15 text-accent-foreground border border-accent/30 font-semibold">
-                          <Play className="w-3.5 h-3.5 text-accent" />
-                          <span className="text-muted-foreground text-xs">Starts</span>
-                          <span className="font-display">{formatTime12(comp.start_time)}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {formatTime12(comp.start_time)} - {formatTime12(comp.end_time)}
                         </span>
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-foreground border border-destructive/30 font-semibold">
-                          <Lock className="w-3.5 h-3.5 text-destructive" />
-                          <span className="text-muted-foreground text-xs">Ends</span>
-                          <span className="font-display">{formatTime12(comp.end_time)}</span>
-                        </span>
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-foreground border border-primary/30 font-semibold">
-                          <Clock className="w-3.5 h-3.5 text-primary" />
-                          {formatDuration(comp.duration_minutes)}
-                        </span>
+                        <span>{formatDuration(comp.duration_minutes)}</span>
                       </div>
                       {/* Countdown timer */}
                       {isEnrolled && !isCompleted && (
