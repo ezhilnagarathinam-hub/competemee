@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { formatTimestampShort, formatDurationBetween } from '@/lib/timeFormat';
 import type { Competition } from '@/types/database';
 
 interface LeaderboardEntry {
@@ -13,6 +14,7 @@ interface LeaderboardEntry {
   correct_marks: number;
   negative_marks: number;
   total_marks: number;
+  started_at: string | null;
   submitted_at: string | null;
   isLate?: boolean;
 }
