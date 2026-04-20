@@ -317,7 +317,7 @@ export default function TestInterface() {
 
       if (sErr) throw sErr;
 
-      const { data: qData, error: qErr } = await supabase
+      const { data: qData } = await supabase
         .from('student_answers')
         .select('student_id,questions(question_number)')
         .eq('competition_id', competitionId)
