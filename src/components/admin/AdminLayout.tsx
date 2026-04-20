@@ -4,19 +4,27 @@ import { AdminSidebar } from './AdminSidebar';
 import { useAdminAuth } from '@/lib/auth';
 
 export function AdminLayout() {
-  const { isAdmin } = useAdminAuth();
+  const { isAdmin, hydrated } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (hydrated && !isAdmin) {
       navigate('/admin/login');
     }
-  }, [isAdmin, navigate]);
+  }, [hydrated, isAdmin, navigate]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return null;
@@ -26,9 +34,7 @@ export function AdminLayout() {
     <div className="min-h-screen bg-background">
       <AdminSidebar />
       <main className="lg:ml-64 px-4 py-4 pt-20 lg:px-6 lg:py-6 lg:pt-6">
-        <div className="w-full">
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
     </div>
   );
