@@ -178,7 +178,7 @@
 
   .question-nav-btn {
     @apply w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .question-nav-btn.unanswered {
