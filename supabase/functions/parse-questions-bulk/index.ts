@@ -34,6 +34,12 @@ Each question may include:
 
 For passage-based questions, include the relevant passage/case text together with each related question inside question_text so nothing is lost.
 
+CRITICAL — STRIP ALL NUMBERING:
+- Remove any leading question numbers from question_text (e.g. "1.", "Q1.", "Q. 1)", "Question 5:", "5)", "(12)", "12 -", "5 ]", "Q.No.7" etc.). The platform shows its own question number, so keeping the original number causes double-numbering and confuses students.
+- Remove any "Passage 1", "Passage No. 2", "Case 3:", "Set II:", "Comprehension 1" style labels at the start of a passage. Keep only the passage content itself.
+- Do NOT remove numbering that is part of the actual question content (e.g. statement numerals "I.", "II.", "1.", "2." inside multi-statement questions, or numbers inside the sentence like "In 1947, ..."). Only strip the OUTER question/passage index.
+- Trim leading/trailing whitespace after stripping.
+
 Return a JSON object with this exact structure:
 {
   "questions": [

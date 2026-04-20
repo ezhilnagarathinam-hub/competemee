@@ -41,6 +41,12 @@ Use intelligence to understand the format. The question might be:
 If a passage is present, include BOTH the full passage and the actual question together inside question_text in the correct reading order.
 Do not put passage text into options, answer, or explanation.
 
+CRITICAL — STRIP ALL NUMBERING:
+- Remove any leading question number from question_text (e.g. "1.", "Q1.", "Q. 1)", "Question 5:", "5)", "(12)", "12 -", "Q.No.7" etc.). The platform shows its own question number, so keeping the original number causes double-numbering and confuses students.
+- Remove any "Passage 1", "Passage No. 2", "Case 3:", "Comprehension 1" style labels at the start of a passage. Keep only the passage content itself.
+- Do NOT remove numbering that is part of the actual question content (e.g. statement numerals "I.", "II.", "1.", "2." inside multi-statement questions, or numbers inside a sentence like "In 1947, ..."). Only strip the OUTER question/passage index.
+- Trim leading/trailing whitespace after stripping.
+
 Return a JSON object with this exact structure:
 {
   "question_text": "The full question text including any passage/case, assertion/reason, and statements",

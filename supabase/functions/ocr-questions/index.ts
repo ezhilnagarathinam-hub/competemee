@@ -65,6 +65,7 @@ Important:
 - If an image has math symbols or equations, describe them clearly
 - If correct answer is marked/highlighted, include it
 - If explanation is provided, include it
+- CRITICAL — STRIP NUMBERING: Remove any leading question numbers from question_text (e.g. "1.", "Q1.", "Q. 1)", "Question 5:", "5)", "(12)", "Q.No.7"). Also remove "Passage 1", "Passage No. 2", "Case 3:", "Comprehension 1" labels — keep only the passage content. Do NOT strip numbering that is part of the question content itself (statement numerals like "I.", "II.", or numbers inside sentences). The platform displays its own question number; keeping the original causes double-numbering.
 - Return ONLY the JSON array, no other text`;
 
     // Build content array based on file type
