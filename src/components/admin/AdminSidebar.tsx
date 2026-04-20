@@ -40,7 +40,7 @@ export function AdminSidebar() {
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
       
       <div className="p-6 border-b border-border relative z-10">
-        <div className="flex items-center gap-3">
+        <Link to="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 hover:opacity-80 transition-opacity" aria-label="Go to home">
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-primary">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
@@ -48,7 +48,7 @@ export function AdminSidebar() {
             <h1 className="font-bold text-sm text-foreground font-display">COMPETE ME</h1>
             <p className="text-xs text-muted-foreground">Control Center</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       <nav className="flex-1 p-4 space-y-1 relative z-10">
