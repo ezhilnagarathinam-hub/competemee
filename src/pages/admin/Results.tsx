@@ -64,7 +64,7 @@ export default function Results() {
       const { data: counts, error: countError } = await supabase
         .from('student_competitions')
         .select('competition_id')
-        .eq('has_submitted', true);
+        .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)');
 
       if (countError) throw countError;
 
@@ -106,7 +106,7 @@ export default function Results() {
           .from('student_competitions')
           .select(`student_id, total_marks, submitted_at, started_at, students!inner(name)`)
           .eq('competition_id', compId)
-          .eq('has_submitted', true),
+          .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)'),
         supabase
           .from('questions')
           .select('id, marks')

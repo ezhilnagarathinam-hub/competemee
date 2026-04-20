@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Plus, Image, Trash2, Edit, FileQuestion, Upload, FileImage, Loader2, Sparkles, Copy, ArrowUp, ArrowDown, BookOpen, Wand2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Edit, FileQuestion, FileImage, Loader2, Sparkles, Copy, ArrowUp, ArrowDown, BookOpen, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -16,7 +17,7 @@ export default function Questions() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedCompetition, setSelectedCompetition] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -26,6 +27,8 @@ export default function Questions() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkParsing, setBulkParsing] = useState(false);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
   const [defaultMarksText, setDefaultMarksText] = useState<string>('1');
@@ -64,6 +67,12 @@ export default function Questions() {
       setMarksText(String(dm));
     }
   }, [selectedCompetition]);
+
+  useEffect(() => {
+    setSelectedQuestionIds([]);
+  }, [selectedCompetition, questions.length]);
+
+  const allSelected = useMemo(() => questions.length > 0 && selectedQuestionIds.length === questions.length, [questions.length, selectedQuestionIds.length]);
 
   async function fetchCompetitions() {
     try {
@@ -164,6 +173,28 @@ export default function Questions() {
     } catch (error) {
       console.error('Error deleting question:', error);
       toast.error('Failed to delete question');
+    }
+  }
+
+  async function deleteSelectedQuestions() {
+    if (selectedQuestionIds.length === 0) return;
+    if (!confirm(`Delete ${selectedQuestionIds.length} selected question(s)?`)) return;
+
+    setBulkDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .in('id', selectedQuestionIds);
+      if (error) throw error;
+      toast.success('Selected questions deleted');
+      setSelectedQuestionIds([]);
+      fetchQuestions(selectedCompetition);
+    } catch (error) {
+      console.error('Error deleting selected questions:', error);
+      toast.error('Failed to delete selected questions');
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -510,6 +541,29 @@ export default function Questions() {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
+          {questions.length > 0 && (
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => setSelectedQuestionIds(checked ? questions.map((q) => q.id) : [])}
+                />
+                <span className="text-sm text-foreground">Select all</span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={selectedQuestionIds.length === 0 || bulkDeleting}
+                onClick={deleteSelectedQuestions}
+                className="text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedQuestionIds.length})
+              </Button>
+            </div>
+          )}
+
           <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select competition" />
@@ -868,6 +922,13 @@ export default function Questions() {
             <Card key={q.id} className="glass-card hover:border-primary/30 transition-all">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
+                  <Checkbox
+                    checked={selectedQuestionIds.includes(q.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedQuestionIds((prev) => checked ? [...prev, q.id] : prev.filter((id) => id !== q.id));
+                    }}
+                    className="mt-2"
+                  />
                   {/* Reorder buttons */}
                   <div className="flex flex-col gap-1 items-center">
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0} onClick={() => moveQuestion(index, 'up')}>
