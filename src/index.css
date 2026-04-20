@@ -83,12 +83,12 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: 'Nunito', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
   }
 }
 
@@ -155,8 +155,8 @@
   }
 
   .timer-display {
-    @apply text-2xl font-bold tracking-widest;
-    font-family: 'Orbitron', monospace;
+    @apply text-2xl font-bold tracking-wider;
+    font-family: 'Outfit', monospace;
   }
 
   .question-option {
@@ -178,7 +178,7 @@
 
   .question-nav-btn {
     @apply w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-300;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 
   .question-nav-btn.unanswered {
@@ -212,8 +212,8 @@
   }
 
   .compete-btn {
-    @apply relative overflow-hidden font-bold uppercase tracking-wider;
-    font-family: 'Orbitron', sans-serif;
+    @apply relative overflow-hidden font-bold uppercase tracking-wide;
+    font-family: 'Outfit', sans-serif;
   }
 
   .compete-btn::before {
