@@ -156,7 +156,7 @@
 
   .timer-display {
     @apply text-2xl font-bold tracking-widest;
-    font-family: 'Orbitron', monospace;
+    font-family: 'Outfit', sans-serif;
   }
 
   .question-option {
