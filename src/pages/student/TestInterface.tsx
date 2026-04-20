@@ -27,6 +27,128 @@ export default function TestInterface() {
   const [statusId, setStatusId] = useState<string | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const answersRef = useRef<Map<string, StudentAnswer>>(new Map());
+  const queuedAnswerSavesRef = useRef<Record<string, { saving: boolean; pending: { answer: 'A' | 'B' | 'C' | 'D' | null; isReview: boolean } | null }>>({});
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  const computeTotalMarks = useCallback((answerMap: Map<string, StudentAnswer>, questionList: Question[] = questions) => {
+    let correctMarks = 0;
+    let negativeMarks = 0;
+
+    questionList.forEach((q) => {
+      const ans = answerMap.get(q.id);
+      if (!ans?.selected_answer) return;
+
+      if (ans.is_correct) {
+        correctMarks += Number(q.marks) || 0;
+      } else {
+        negativeMarks += (Number(q.marks) || 0) / 3;
+      }
+    });
+
+    return Math.round((correctMarks - negativeMarks) * 100) / 100;
+  }, [questions]);
+
+  const waitForPendingAnswerSaves = useCallback(async () => {
+    const startedAt = Date.now();
+
+    while (Object.values(queuedAnswerSavesRef.current).some((entry) => entry?.saving || entry?.pending)) {
+      if (Date.now() - startedAt > 5000) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }, []);
+
+  const finalizeSubmission = useCallback(async ({
+    submittedAt,
+    successMessage,
+    redirect = true,
+  }: {
+    submittedAt?: string;
+    successMessage?: string;
+    redirect?: boolean;
+  } = {}) => {
+    if (!studentId || !competitionId || submittingRef.current) return false;
+
+    submittingRef.current = true;
+
+    try {
+      await waitForPendingAnswerSaves();
+
+      const timestamp = submittedAt || new Date().toISOString();
+      const totalMarks = computeTotalMarks(answersRef.current);
+
+      const { data: existingRows, error: existingError } = await supabase
+        .from('student_competitions')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('competition_id', competitionId)
+        .limit(1);
+
+      if (existingError) throw existingError;
+
+      const existingRowId = existingRows?.[0]?.id || statusId;
+
+      if (existingRowId) {
+        const { error: updateError } = await supabase
+          .from('student_competitions')
+          .update({
+            has_submitted: true,
+            submitted_at: timestamp,
+            total_marks: totalMarks,
+            is_locked: true,
+            has_started: true,
+            last_seen: timestamp,
+          })
+          .eq('id', existingRowId);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('student_competitions')
+          .insert([{ 
+            student_id: studentId,
+            competition_id: competitionId,
+            has_submitted: true,
+            submitted_at: timestamp,
+            total_marks: totalMarks,
+            is_locked: true,
+            has_started: true,
+            last_seen: timestamp,
+          }]);
+
+        if (insertError) throw insertError;
+      }
+
+      try {
+        localStorage.setItem(`submittedCompetition:${competitionId}`, timestamp);
+      } catch {
+        // ignore storage issues
+      }
+
+      setSubmitDialogOpen(false);
+      setTimeExpired(false);
+
+      if (successMessage) {
+        toast.success(successMessage);
+      }
+
+      if (redirect) {
+        navigate('/student');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error finalizing test submission:', error);
+      toast.error('Failed to save your submission');
+      return false;
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [competitionId, computeTotalMarks, navigate, statusId, studentId, waitForPendingAnswerSaves]);
 
   useEffect(() => {
     if (competitionId && studentId) {
