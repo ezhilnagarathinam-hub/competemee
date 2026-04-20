@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, StudentCompetition } from '@/types/database';
 import { format, parseISO } from 'date-fns';
-import { formatTime12 } from '@/lib/timeFormat';
+import { formatTime12, formatTimestampShort, formatDurationBetween } from '@/lib/timeFormat';
 
 interface CompetitionWithStatus extends Competition {
   studentStatus?: StudentCompetition;
@@ -565,13 +565,24 @@ function StudentResults() {
           return (
             <div 
               key={result.id}
-              className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all"
+              className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all"
             >
-              <div>
+              <div className="flex-1">
                 <h4 className="font-bold text-foreground font-display">{comp?.name || 'Unknown'}</h4>
-                <p className="text-sm text-muted-foreground">
-                  Submitted: {result.submitted_at ? new Date(result.submitted_at).toLocaleString() : '-'}
-                </p>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="px-2 py-1 rounded-md bg-background/60 border border-border/40">
+                    <span className="text-muted-foreground">Started: </span>
+                    <span className="font-bold text-foreground">{formatTimestampShort(result.started_at)}</span>
+                  </div>
+                  <div className="px-2 py-1 rounded-md bg-background/60 border border-border/40">
+                    <span className="text-muted-foreground">Submitted: </span>
+                    <span className="font-bold text-foreground">{formatTimestampShort(result.submitted_at)}</span>
+                  </div>
+                  <div className="px-2 py-1 rounded-md bg-primary/10 border border-primary/30">
+                    <span className="text-muted-foreground">Time taken: </span>
+                    <span className="font-bold text-primary">{formatDurationBetween(result.started_at, result.submitted_at)}</span>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 {showResult ? (
