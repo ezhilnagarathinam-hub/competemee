@@ -170,6 +170,7 @@ export default function Results() {
           correct_marks,
           negative_marks,
           total_marks,
+          started_at: s.started_at,
           submitted_at: s.submitted_at,
           isLate,
         };
@@ -282,7 +283,9 @@ export default function Results() {
                 <TableHead>Total</TableHead>
                 <TableHead>%</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Started</TableHead>
                 <TableHead>Submitted</TableHead>
+                <TableHead>Time Taken</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -324,10 +327,14 @@ export default function Results() {
                       <span className="px-2 py-1 text-xs font-bold rounded-full bg-accent/20 text-accent">ON TIME</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {entry.submitted_at
-                      ? new Date(entry.submitted_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' })
-                      : '-'}
+                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    {formatTimestampShort(entry.started_at)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    {formatTimestampShort(entry.submitted_at)}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm font-bold text-primary font-display">
+                    {formatDurationBetween(entry.started_at, entry.submitted_at)}
                   </TableCell>
                 </TableRow>
               ))}
