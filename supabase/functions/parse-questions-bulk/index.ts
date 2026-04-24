@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const prompt = `You are a bulk question parser for an MCQ exam platform. The following pasted text contains MULTIPLE questions (typically 5-20 of them). Extract every question into a structured array.
+    const prompt = `You are a bulk question parser for an MCQ exam platform. The following pasted text contains MULTIPLE questions (anywhere from 5 up to 100). Extract EVERY single question into a structured array — do not stop early, do not summarize, do not skip any.
 
 Each question may include:
 - A passage/case/stimulus followed by one or more related questions
