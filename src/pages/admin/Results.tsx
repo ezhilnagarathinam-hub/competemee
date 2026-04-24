@@ -55,23 +55,23 @@ export default function Results() {
 
   async function fetchCompetitions(silent = false) {
     try {
-      const { data: comps, error } = await supabase
+      const [{ data: comps, error }, { data: summaryRows, error: summaryError }] = await Promise.all([
+        supabase
         .from('competitions')
         .select('*')
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }),
+        (supabase as any)
+          .from('competition_result_reports')
+          .select('competition_id')
+          .eq('is_finalized', true),
+      ]);
 
       if (error) throw error;
 
-      // Get submission counts
-      const { data: counts, error: countError } = await supabase
-        .from('student_competitions')
-        .select('competition_id')
-        .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)');
-
-      if (countError) throw countError;
+      if (summaryError) throw summaryError;
 
       const countMap: Record<string, number> = {};
-      (counts || []).forEach((c: any) => {
+      (summaryRows || []).forEach((c: any) => {
         countMap[c.competition_id] = (countMap[c.competition_id] || 0) + 1;
       });
 
@@ -103,46 +103,25 @@ export default function Results() {
     try {
       const compData = comp || competitions.find(c => c.id === compId);
 
-      const [{ data: submissions, error: subError }, { data: questions, error: qError }, { data: rawAnswers, error: aError }] = await Promise.all([
-        supabase
-          .from('student_competitions')
-          .select(`student_id, total_marks, submitted_at, started_at, students!inner(name)`)
+      const [{ data: submissions, error: subError }, { data: questions, error: qError }] = await Promise.all([
+        (supabase as any)
+          .from('competition_result_reports')
+          .select('student_id, student_name, total_marks, correct_marks, negative_marks, submitted_at, started_at, percentage, rank, is_topper')
           .eq('competition_id', compId)
-          .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)'),
+          .eq('is_finalized', true)
+          .order('rank', { ascending: true, nullsFirst: false })
+          .order('submitted_at', { ascending: true, nullsFirst: false }),
         supabase
           .from('questions')
           .select('id, marks')
-          .eq('competition_id', compId),
-        supabase
-          .from('student_answers')
-          .select('student_id, question_id, is_correct, selected_answer')
           .eq('competition_id', compId),
       ]);
 
       if (subError) throw subError;
       if (qError) throw qError;
-      if (aError) throw aError;
 
       const total = questions?.reduce((sum, q) => sum + (q.marks || 0), 0) || 0;
       setMaxMarks(prev => ({ ...prev, [compId]: total }));
-
-      // Build per-question marks map
-      const qMarks = new Map<string, number>();
-      (questions || []).forEach((q: any) => qMarks.set(q.id, q.marks || 0));
-
-      // Build per-student score breakdown
-      const breakdown = new Map<string, { correct: number; negative: number }>();
-      (rawAnswers || []).forEach((a: any) => {
-        if (!a.selected_answer) return; // unattempted, no penalty
-        const m = qMarks.get(a.question_id) || 0;
-        const cur = breakdown.get(a.student_id) || { correct: 0, negative: 0 };
-        if (a.is_correct) {
-          cur.correct += m;
-        } else {
-          cur.negative += m / 3;
-        }
-        breakdown.set(a.student_id, cur);
-      });
 
       const entries: LeaderboardEntry[] = (submissions || []).map((s: any) => {
         let isLate = false;
@@ -154,22 +133,13 @@ export default function Results() {
             isLate = true;
           }
         }
-        const b = breakdown.get(s.student_id) || { correct: 0, negative: 0 };
-        const computed_correct = Math.round(b.correct * 100) / 100;
-        const computed_negative = Math.round(b.negative * 100) / 100;
-        const computed_total = Math.round((b.correct - b.negative) * 100) / 100;
 
-        // Prefer authoritative stored total if present (student_competitions.total_marks)
-        const storedTotal = typeof s.total_marks === 'number' ? Math.round(s.total_marks * 100) / 100 : null;
-        const total_marks = storedTotal !== null ? storedTotal : computed_total;
-        const correct_marks = storedTotal !== null ? computed_correct : computed_correct;
-        const negative_marks = storedTotal !== null ? computed_negative : computed_negative;
         return {
           student_id: s.student_id,
-          student_name: s.students?.name || 'Unknown',
-          correct_marks,
-          negative_marks,
-          total_marks,
+          student_name: s.student_name || 'Unknown',
+          correct_marks: Math.round((Number(s.correct_marks) || 0) * 100) / 100,
+          negative_marks: Math.round((Number(s.negative_marks) || 0) * 100) / 100,
+          total_marks: Math.round((Number(s.total_marks) || 0) * 100) / 100,
           started_at: s.started_at,
           submitted_at: s.submitted_at,
           isLate,
