@@ -256,7 +256,7 @@ export default function StudentDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-bold text-lg text-foreground font-display">{comp.name}</h3>
-                        {!isEnrolled && (
+                        {!isEnrolled && !isBeforeStart(comp) && (
                           <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-muted text-muted-foreground">
                             NOT ENROLLED
                           </span>
