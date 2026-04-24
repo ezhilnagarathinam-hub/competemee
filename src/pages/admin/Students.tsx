@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Student, Competition } from '@/types/database';
+import { softDelete } from '@/lib/undoDelete';
 
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -200,19 +201,16 @@ export default function Students() {
 
   async function deleteStudent(id: string) {
     if (!confirm('Are you sure you want to delete this player?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      toast.success('Player deleted');
-      fetchStudents();
-    } catch (error) {
-      console.error('Error deleting student:', error);
-      toast.error('Failed to delete player');
-    }
+    await softDelete({
+      table: 'students',
+      ids: [id],
+      label: 'Player',
+      onChange: fetchStudents,
+      related: [
+        { table: 'student_competitions', filter: (q: any) => q.eq('student_id', id) },
+        { table: 'student_answers', filter: (q: any) => q.eq('student_id', id) },
+      ],
+    });
   }
 
   function resetForm() {

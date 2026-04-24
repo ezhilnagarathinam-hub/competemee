@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { Competition } from '@/types/database';
 import { format } from 'date-fns';
 import { formatTime12 } from '@/lib/timeFormat';
+import { softDelete } from '@/lib/undoDelete';
 
 export default function Competitions() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -160,19 +161,12 @@ export default function Competitions() {
 
   async function deleteCompetition(id: string) {
     if (!confirm('Are you sure you want to delete this competition?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('competitions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      toast.success('Competition deleted');
-      fetchCompetitions();
-    } catch (error) {
-      console.error('Error deleting competition:', error);
-      toast.error('Failed to delete competition');
-    }
+    await softDelete({
+      table: 'competitions',
+      ids: [id],
+      label: 'Competition',
+      onChange: fetchCompetitions,
+    });
   }
 
   function formatDuration(minutes: number): string {
