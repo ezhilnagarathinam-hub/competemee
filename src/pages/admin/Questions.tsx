@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, Question } from '@/types/database';
+import { softDelete } from '@/lib/undoDelete';
 
 export default function Questions() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -161,19 +162,12 @@ export default function Questions() {
 
   async function deleteQuestion(id: string) {
     if (!confirm('Are you sure you want to delete this question?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('questions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      toast.success('Question deleted');
-      fetchQuestions(selectedCompetition);
-    } catch (error) {
-      console.error('Error deleting question:', error);
-      toast.error('Failed to delete question');
-    }
+    await softDelete({
+      table: 'questions',
+      ids: [id],
+      label: 'Question',
+      onChange: () => fetchQuestions(selectedCompetition),
+    });
   }
 
   async function deleteSelectedQuestions() {
@@ -181,21 +175,15 @@ export default function Questions() {
     if (!confirm(`Delete ${selectedQuestionIds.length} selected question(s)?`)) return;
 
     setBulkDeleting(true);
-    try {
-      const { error } = await supabase
-        .from('questions')
-        .delete()
-        .in('id', selectedQuestionIds);
-      if (error) throw error;
-      toast.success('Selected questions deleted');
-      setSelectedQuestionIds([]);
-      fetchQuestions(selectedCompetition);
-    } catch (error) {
-      console.error('Error deleting selected questions:', error);
-      toast.error('Failed to delete selected questions');
-    } finally {
-      setBulkDeleting(false);
-    }
+    const ids = [...selectedQuestionIds];
+    await softDelete({
+      table: 'questions',
+      ids,
+      label: 'Question',
+      onChange: () => fetchQuestions(selectedCompetition),
+    });
+    setSelectedQuestionIds([]);
+    setBulkDeleting(false);
   }
 
   async function moveQuestion(index: number, direction: 'up' | 'down') {
