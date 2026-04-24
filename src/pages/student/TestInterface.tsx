@@ -81,46 +81,29 @@ export default function TestInterface() {
       const timestamp = submittedAt || new Date().toISOString();
       const totalMarks = computeTotalMarks(answersRef.current);
 
-      const { data: existingRows, error: existingError } = await supabase
+      const { data: savedStatus, error: statusError } = await (supabase as any)
         .from('student_competitions')
+        .upsert({
+          id: statusId || undefined,
+          student_id: studentId,
+          competition_id: competitionId,
+          has_submitted: true,
+          submitted_at: timestamp,
+          total_marks: totalMarks,
+          is_locked: true,
+          has_started: true,
+          last_seen: timestamp,
+        }, {
+          onConflict: 'student_id,competition_id',
+          ignoreDuplicates: false,
+        })
         .select('id')
-        .eq('student_id', studentId)
-        .eq('competition_id', competitionId)
-        .limit(1);
+        .single();
 
-      if (existingError) throw existingError;
+      if (statusError) throw statusError;
 
-      const existingRowId = existingRows?.[0]?.id || statusId;
-
-      if (existingRowId) {
-        const { error: updateError } = await supabase
-          .from('student_competitions')
-          .update({
-            has_submitted: true,
-            submitted_at: timestamp,
-            total_marks: totalMarks,
-            is_locked: true,
-            has_started: true,
-            last_seen: timestamp,
-          })
-          .eq('id', existingRowId);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('student_competitions')
-          .insert([{ 
-            student_id: studentId,
-            competition_id: competitionId,
-            has_submitted: true,
-            submitted_at: timestamp,
-            total_marks: totalMarks,
-            is_locked: true,
-            has_started: true,
-            last_seen: timestamp,
-          }]);
-
-        if (insertError) throw insertError;
+      if (savedStatus?.id) {
+        setStatusId(savedStatus.id);
       }
 
       try {
@@ -351,32 +334,39 @@ export default function TestInterface() {
 
   const handleStartTest = async () => {
     try {
+      const startedAt = new Date().toISOString();
       const { data: existing } = await supabase
         .from('student_competitions')
-        .select('*')
+        .select('id, started_at, current_question, has_submitted, is_locked')
         .eq('student_id', studentId)
         .eq('competition_id', competitionId)
         .maybeSingle();
 
-       if (!existing) {
-         const { data: inserted, error } = await supabase.from('student_competitions').insert([{
+      if (existing?.has_submitted || existing?.is_locked) {
+        toast.error('This test is already submitted and locked. Contact admin to unlock.');
+        navigate('/student');
+        return;
+      }
+
+      const { data: savedStatus, error } = await (supabase as any)
+        .from('student_competitions')
+        .upsert({
+          id: existing?.id,
           student_id: studentId,
           competition_id: competitionId,
           has_started: true,
-          started_at: new Date().toISOString(),
-           current_question: 1,
-           is_locked: false,
-         }]).select('id').single();
-         if (error) throw error;
-         setStatusId(inserted.id);
-      } else {
-         const { error } = await supabase
-          .from('student_competitions')
-           .update({ has_started: true, started_at: existing.started_at || new Date().toISOString(), current_question: existing.current_question || 1 })
-          .eq('id', existing.id);
-         if (error) throw error;
-         setStatusId(existing.id);
-      }
+          started_at: existing?.started_at || startedAt,
+          current_question: existing?.current_question || 1,
+          is_locked: false,
+        }, {
+          onConflict: 'student_id,competition_id',
+          ignoreDuplicates: false,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      setStatusId(savedStatus?.id || existing?.id || null);
 
       setHasStarted(true);
       setReadyDialogOpen(false);
@@ -419,58 +409,32 @@ export default function TestInterface() {
     while (pendingState.pending) {
       const nextSave = pendingState.pending;
       pendingState.pending = null;
-      const currentExisting = answersRef.current.get(questionId);
       const nextIsCorrect = nextSave.answer ? nextSave.answer === question?.correct_answer : null;
 
       try {
-        if (currentExisting?.id) {
-          const { error } = await supabase
-            .from('student_answers')
-            .update({
-              selected_answer: nextSave.answer,
-              is_marked_for_review: nextSave.isReview,
-              is_correct: nextIsCorrect,
-            })
-            .eq('id', currentExisting.id);
+        const { data: savedAnswer, error } = await (supabase as any)
+          .from('student_answers')
+          .upsert({
+            student_id: studentId,
+            question_id: questionId,
+            competition_id: competitionId,
+            selected_answer: nextSave.answer,
+            is_marked_for_review: nextSave.isReview,
+            is_correct: nextIsCorrect,
+          }, {
+            onConflict: 'student_id,competition_id,question_id',
+            ignoreDuplicates: false,
+          })
+          .select()
+          .single();
 
-          if (error) throw error;
+        if (error) throw error;
 
-          setAnswers((prev) => {
-            const next = new Map(prev);
-            const existing = next.get(questionId);
-            if (existing) {
-              next.set(questionId, {
-                ...existing,
-                selected_answer: nextSave.answer,
-                is_marked_for_review: nextSave.isReview,
-                is_correct: nextIsCorrect,
-                updated_at: new Date().toISOString(),
-              });
-            }
-            return next;
-          });
-        } else {
-          const { data: insertedAnswer, error } = await supabase
-            .from('student_answers')
-            .insert([{ 
-              student_id: studentId,
-              question_id: questionId,
-              competition_id: competitionId,
-              selected_answer: nextSave.answer,
-              is_marked_for_review: nextSave.isReview,
-              is_correct: nextIsCorrect,
-            }])
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          setAnswers((prev) => {
-            const next = new Map(prev);
-            next.set(questionId, insertedAnswer as StudentAnswer);
-            return next;
-          });
-        }
+        setAnswers((prev) => {
+          const next = new Map(prev);
+          next.set(questionId, savedAnswer as StudentAnswer);
+          return next;
+        });
       } catch (error) {
         console.error('Error saving answer:', error);
         toast.error('Failed to save answer');

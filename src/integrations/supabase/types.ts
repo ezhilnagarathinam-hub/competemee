@@ -38,6 +38,97 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_result_summaries: {
+        Row: {
+          attempted_questions: number
+          competition_id: string
+          correct_answers: number
+          correct_marks: number
+          created_at: string
+          id: string
+          is_finalized: boolean
+          is_topper: boolean
+          last_activity_at: string | null
+          max_marks: number
+          negative_marks: number
+          percentage: number
+          rank: number | null
+          started_at: string | null
+          student_competition_id: string | null
+          student_id: string
+          submitted_at: string | null
+          total_marks: number
+          updated_at: string
+          wrong_answers: number
+        }
+        Insert: {
+          attempted_questions?: number
+          competition_id: string
+          correct_answers?: number
+          correct_marks?: number
+          created_at?: string
+          id?: string
+          is_finalized?: boolean
+          is_topper?: boolean
+          last_activity_at?: string | null
+          max_marks?: number
+          negative_marks?: number
+          percentage?: number
+          rank?: number | null
+          started_at?: string | null
+          student_competition_id?: string | null
+          student_id: string
+          submitted_at?: string | null
+          total_marks?: number
+          updated_at?: string
+          wrong_answers?: number
+        }
+        Update: {
+          attempted_questions?: number
+          competition_id?: string
+          correct_answers?: number
+          correct_marks?: number
+          created_at?: string
+          id?: string
+          is_finalized?: boolean
+          is_topper?: boolean
+          last_activity_at?: string | null
+          max_marks?: number
+          negative_marks?: number
+          percentage?: number
+          rank?: number | null
+          started_at?: string | null
+          student_competition_id?: string | null
+          student_id?: string
+          submitted_at?: string | null
+          total_marks?: number
+          updated_at?: string
+          wrong_answers?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_result_summaries_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_result_summaries_student_competition_id_fkey"
+            columns: ["student_competition_id"]
+            isOneToOne: false
+            referencedRelation: "student_competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_result_summaries_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitions: {
         Row: {
           created_at: string | null
@@ -307,12 +398,58 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      competition_result_reports: {
+        Row: {
+          attempted_questions: number | null
+          competition_id: string | null
+          competition_name: string | null
+          correct_answers: number | null
+          correct_marks: number | null
+          is_finalized: boolean | null
+          is_topper: boolean | null
+          last_activity_at: string | null
+          max_marks: number | null
+          negative_marks: number | null
+          percentage: number | null
+          rank: number | null
+          started_at: string | null
+          student_id: string | null
+          student_name: string | null
+          submitted_at: string | null
+          total_marks: number | null
+          updated_at: string | null
+          wrong_answers: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_result_summaries_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_result_summaries_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_student_marks: {
         Args: { p_competition_id: string; p_student_id: string }
         Returns: number
+      }
+      recompute_competition_rankings: {
+        Args: { p_competition_id: string }
+        Returns: undefined
+      }
+      refresh_competition_result_summary: {
+        Args: { p_competition_id: string; p_student_id: string }
+        Returns: undefined
       }
     }
     Enums: {
