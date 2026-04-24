@@ -161,6 +161,15 @@ export default function StudentDashboard() {
     return now >= windowStart && now <= windowEnd;
   }
 
+  function isBeforeStart(comp: CompetitionWithStatus): boolean {
+    const now = new Date();
+    const startDate = parseISO(comp.date);
+    const [startH, startM] = comp.start_time.split(':').map(Number);
+    const windowStart = new Date(startDate);
+    windowStart.setHours(startH, startM, 0, 0);
+    return now < windowStart;
+  }
+
   function formatDuration(minutes: number): string {
     if (minutes >= 60 && minutes % 60 === 0) {
       const hrs = minutes / 60;
