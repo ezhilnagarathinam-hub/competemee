@@ -296,10 +296,44 @@ export default function Students() {
               </div>
 
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-primary" />
-                  Assign to Competitions
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    Assign to Competitions
+                  </Label>
+                  {competitions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCompetitions(competitions.map(c => c.id))}
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-muted-foreground/50">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCompetitions([])}
+                        className="text-xs font-bold text-muted-foreground hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {competitions.length > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-primary/5 border border-primary/20">
+                    <input
+                      type="checkbox"
+                      checked={selectedCompetitions.length === competitions.length}
+                      onChange={(e) => setSelectedCompetitions(e.target.checked ? competitions.map(c => c.id) : [])}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <span className="text-sm font-bold text-primary">
+                      Assign to ALL competitions ({competitions.length})
+                    </span>
+                  </label>
+                )}
                 <div className="grid grid-cols-1 gap-2 p-3 rounded-lg bg-muted/30 border border-border max-h-40 overflow-y-auto">
                   {competitions.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No competitions available</p>
@@ -313,6 +347,11 @@ export default function Students() {
                     ))
                   )}
                 </div>
+                {selectedCompetitions.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedCompetitions.length} of {competitions.length} selected
+                  </p>
+                )}
               </div>
 
               {editingId && (
