@@ -73,7 +73,7 @@ ${text}`;
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 8000,
+        max_tokens: 16000,
       }),
     });
 
@@ -85,20 +85,14 @@ ${text}`;
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
 
-    let parsed: any = null;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      }
-    } catch {
+    const questions = extractQuestions(content);
+
+    if (questions.length === 0) {
       return new Response(JSON.stringify({ error: 'Failed to parse AI response', raw: content }), {
         status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
 
     return new Response(JSON.stringify({ questions }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
