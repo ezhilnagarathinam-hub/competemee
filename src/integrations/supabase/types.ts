@@ -396,6 +396,45 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          status: string
+          student_name: string
+          student_number: string | null
+          student_uuid: string | null
+          test_id: string | null
+          test_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          student_name: string
+          student_number?: string | null
+          student_uuid?: string | null
+          test_id?: string | null
+          test_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          student_name?: string
+          student_number?: string | null
+          student_uuid?: string | null
+          test_id?: string | null
+          test_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       competition_result_reports: {

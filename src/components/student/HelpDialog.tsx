@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HelpCircle, Send, Mail } from 'lucide-react';
+import { HelpCircle, Send, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStudentAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
-const SUPPORT_EMAIL = 'eadreamssindia@gmail.com';
-
 export function HelpDialog() {
   const { studentName, studentId } = useStudentAuth();
   const [open, setOpen] = useState(false);
@@ -20,6 +18,7 @@ export function HelpDialog() {
   const [tests, setTests] = useState<{ id: string; name: string }[]>([]);
   const [selectedTest, setSelectedTest] = useState('other');
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!open || !studentId) return;
@@ -41,7 +40,7 @@ export function HelpDialog() {
     })();
   }, [open, studentId, studentName]);
 
-  function handleSend() {
+  async function handleSend() {
     if (!message.trim()) {
       toast.error('Please type your issue / message before sending');
       return;
@@ -51,32 +50,33 @@ export function HelpDialog() {
       return;
     }
 
-    const testLabel =
-      selectedTest === 'other'
-        ? 'Other / General'
-        : tests.find((t) => t.id === selectedTest)?.name || 'Other';
+    setSending(true);
+    const isOther = selectedTest === 'other';
+    const testLabel = isOther
+      ? 'Other / General'
+      : tests.find((t) => t.id === selectedTest)?.name || 'Other';
 
-    const subject = `[Compete Me Help] ${testLabel} — ${name}`;
-    const body =
-      `Name: ${name}\n` +
-      `Student ID: ${studentNumber || 'N/A'}\n` +
-      `Test: ${testLabel}\n\n` +
-      `Issue / Message:\n${message}\n\n` +
-      `— Sent from Compete Me Student Portal`;
+    const { error } = await (supabase as any).from('support_tickets').insert({
+      student_uuid: studentId || null,
+      student_name: name.trim(),
+      student_number: studentNumber?.trim() || null,
+      test_id: isOther ? null : selectedTest,
+      test_name: testLabel,
+      message: message.trim(),
+      status: 'open',
+    });
+    setSending(false);
 
-    const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
+    if (error) {
+      console.error('support ticket insert error', error);
+      toast.error('Could not submit your message. Please try again.');
+      return;
+    }
 
-    // Open user's mail client
-    window.location.href = mailto;
-    toast.success('Opening your email app to send the message...');
-
-    setTimeout(() => {
-      setOpen(false);
-      setMessage('');
-      setSelectedTest('other');
-    }, 600);
+    toast.success('Your message was sent to the support team!');
+    setOpen(false);
+    setMessage('');
+    setSelectedTest('other');
   }
 
   return (
@@ -94,13 +94,13 @@ export function HelpDialog() {
       <DialogContent className="glass-card max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
-            <Mail className="w-5 h-5 text-primary" />
+            <MessageSquare className="w-5 h-5 text-primary" />
             CONTACT SUPPORT
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-2">
           <p className="text-xs text-muted-foreground">
-            Your message will be sent to <strong className="text-primary">{SUPPORT_EMAIL}</strong>
+            Your message will be delivered to the <strong className="text-primary">Compete Me</strong> support team. We'll get back to you soon.
           </p>
 
           <div className="space-y-1.5">
@@ -157,10 +157,11 @@ export function HelpDialog() {
 
           <Button
             onClick={handleSend}
+            disabled={sending}
             className="w-full gradient-primary text-primary-foreground compete-btn"
           >
             <Send className="w-4 h-4 mr-2" />
-            Send Email
+            {sending ? 'Sending...' : 'Send Message'}
           </Button>
         </div>
       </DialogContent>
