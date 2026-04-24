@@ -3,6 +3,7 @@ import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { Trophy, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useStudentAuth } from '@/lib/auth';
+import { HelpDialog } from './HelpDialog';
 
 export function StudentLayout() {
   const { isStudent, studentName, logout, hydrated } = useStudentAuth();
@@ -32,13 +33,14 @@ export function StudentLayout() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right">
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-foreground">{studentName}</p>
               <p className="text-xs text-muted-foreground">Student</p>
             </div>
-            <Button 
-              variant="outline" 
+            <HelpDialog />
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => {
                 logout();
@@ -46,7 +48,7 @@ export function StudentLayout() {
               }}
             >
               <LogOut className="w-4 h-4 mr-2" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>

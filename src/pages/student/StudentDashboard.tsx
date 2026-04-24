@@ -161,6 +161,15 @@ export default function StudentDashboard() {
     return now >= windowStart && now <= windowEnd;
   }
 
+  function isBeforeStart(comp: CompetitionWithStatus): boolean {
+    const now = new Date();
+    const startDate = parseISO(comp.date);
+    const [startH, startM] = comp.start_time.split(':').map(Number);
+    const windowStart = new Date(startDate);
+    windowStart.setHours(startH, startM, 0, 0);
+    return now < windowStart;
+  }
+
   function formatDuration(minutes: number): string {
     if (minutes >= 60 && minutes % 60 === 0) {
       const hrs = minutes / 60;
@@ -247,7 +256,7 @@ export default function StudentDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-bold text-lg text-foreground font-display">{comp.name}</h3>
-                        {!isEnrolled && (
+                        {!isEnrolled && !isBeforeStart(comp) && (
                           <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-muted text-muted-foreground">
                             NOT ENROLLED
                           </span>
@@ -278,14 +287,26 @@ export default function StudentDashboard() {
 
                     <div className="ml-4">
                       {!isEnrolled ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => setContactDialogOpen(true)}
-                          className="border-primary/30 hover:bg-primary/10"
-                        >
-                          <Phone className="w-4 h-4 mr-2" />
-                          Enroll Now
-                        </Button>
+                        isBeforeStart(comp) ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground border border-border">
+                              <Lock className="w-5 h-5" />
+                              <span className="font-bold font-display">NOT YET STARTED</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Test opens on {format(parseISO(comp.date), 'MMM dd')} at {formatTime12(comp.start_time)}
+                            </p>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={() => setContactDialogOpen(true)}
+                            className="border-primary/30 hover:bg-primary/10"
+                          >
+                            <Phone className="w-4 h-4 mr-2" />
+                            Enroll Now
+                          </Button>
+                        )
                       ) : isCompleted ? (
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
@@ -312,10 +333,15 @@ export default function StudentDashboard() {
                           <Zap className="w-4 h-4 mr-2" />
                           {hasStarted ? 'CONTINUE' : 'START BATTLE'}
                         </Button>
+                      ) : isBeforeStart(comp) ? (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground border border-border">
+                          <Lock className="w-5 h-5" />
+                          <span className="font-bold font-display">NOT YET STARTED</span>
+                        </div>
                       ) : (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground">
                           <Lock className="w-5 h-5" />
-                          <span className="font-bold">NOT YET</span>
+                          <span className="font-bold">ENDED</span>
                         </div>
                       )}
                     </div>
