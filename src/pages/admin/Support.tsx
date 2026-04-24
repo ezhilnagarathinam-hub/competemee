@@ -123,7 +123,7 @@ export default function Support() {
                       <Clock className="w-3 h-3" /> Open
                     </Badge>
                   ) : (
-                    <Badge className="gap-1 bg-green-500/15 text-green-700 border border-green-500/30">
+                    <Badge className="gap-1 bg-secondary text-secondary-foreground border border-border">
                       <CheckCircle2 className="w-3 h-3" /> Resolved
                     </Badge>
                   )}
