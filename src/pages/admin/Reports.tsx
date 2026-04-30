@@ -94,35 +94,29 @@ export default function Reports() {
     }
   }
 
-  function handleDownloadSummary() {
-    const headers = ['Student Name', 'Location', 'Mobile', 'Email', 'Tests Written', 'Test Names', 'Total Score'];
-    const data = filtered.map(r => [r.name, r.location, r.mobile, r.email, r.tests_written, r.test_names, r.total_score]);
-    downloadCSV(`student-report-${new Date().toISOString().split('T')[0]}.csv`, headers, data);
-    toast.success('Report downloaded');
-  }
-
-  function handleDownloadDetailed() {
-    const headers = ['Student Name', 'Location', 'Mobile', 'Email', 'Test Name', 'Score', 'Max Marks', 'Submitted At'];
-    const data: any[][] = [];
-    filtered.forEach(r => {
-      if (r.details.length === 0) {
-        data.push([r.name, r.location, r.mobile, r.email, '-', 0, 0, '-']);
-      } else {
-        r.details.forEach(d => {
-          data.push([r.name, r.location, r.mobile, r.email, d.competition_name, d.total_marks, d.max_marks, d.submitted_at || '-']);
-        });
-      }
-    });
-    downloadCSV(`detailed-report-${new Date().toISOString().split('T')[0]}.csv`, headers, data);
-    toast.success('Detailed report downloaded');
-  }
-
   const filtered = rows.filter(r =>
     !search ||
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.mobile.includes(search) ||
     r.location.toLowerCase().includes(search.toLowerCase())
   );
+
+  const summaryHeaders = ['Student Name', 'Location', 'Mobile', 'Email', 'Tests Written', 'Test Names', 'Total Score'];
+  const summaryRows = filtered.map(r => [r.name, r.location, r.mobile, r.email, r.tests_written, r.test_names, r.total_score]);
+
+  const detailedHeaders = ['Student Name', 'Location', 'Mobile', 'Email', 'Test Name', 'Score', 'Max Marks', 'Submitted At'];
+  const detailedRows: (string | number)[][] = [];
+  filtered.forEach(r => {
+    if (r.details.length === 0) {
+      detailedRows.push([r.name, r.location, r.mobile, r.email, '-', 0, 0, '-']);
+    } else {
+      r.details.forEach(d => {
+        detailedRows.push([r.name, r.location, r.mobile, r.email, d.competition_name, d.total_marks, d.max_marks, d.submitted_at || '-']);
+      });
+    }
+  });
+
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -135,14 +129,22 @@ export default function Reports() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleDownloadSummary} className="gradient-primary text-primary-foreground compete-btn">
-            <Download className="w-4 h-4 mr-2" />
-            Summary CSV
-          </Button>
-          <Button onClick={handleDownloadDetailed} variant="outline">
-            <FileText className="w-4 h-4 mr-2" />
-            Detailed CSV
-          </Button>
+          <DownloadMenu
+            filename={`student-summary-${today}`}
+            title="Student Performance Summary"
+            headers={summaryHeaders}
+            rows={summaryRows}
+            disabled={filtered.length === 0}
+            label="Summary"
+          />
+          <DownloadMenu
+            filename={`detailed-report-${today}`}
+            title="Detailed Test Report"
+            headers={detailedHeaders}
+            rows={detailedRows}
+            disabled={detailedRows.length === 0}
+            label="Detailed"
+          />
         </div>
       </div>
 
