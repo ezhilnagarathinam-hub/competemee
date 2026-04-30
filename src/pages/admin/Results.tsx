@@ -317,11 +317,8 @@ export default function Results() {
     );
   }
 
-  function downloadLeaderboard(comp: CompetitionWithCount) {
-    const entries = leaderboards[comp.id];
-    if (!entries || entries.length === 0) {
-      return;
-    }
+  function leaderboardExport(comp: CompetitionWithCount) {
+    const entries = leaderboards[comp.id] || [];
     const max = maxMarks[comp.id] || 0;
     const headers = ['Rank', 'Player', 'Correct Marks', 'Negative Marks', 'Total Marks', 'Max Marks', 'Percentage', 'Status', 'Started At', 'Submitted At'];
     const rows = entries.map((e, i) => [
@@ -336,7 +333,7 @@ export default function Results() {
       e.started_at || '',
       e.submitted_at || '',
     ]);
-    downloadCSV(`leaderboard-${comp.name.replace(/\s+/g, '-')}.csv`, headers, rows);
+    return { headers, rows, filename: `leaderboard-${comp.name.replace(/\s+/g, '-')}`, title: `${comp.name} — Leaderboard` };
   }
 
   if (loading) {
