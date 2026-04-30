@@ -317,6 +317,28 @@ export default function Results() {
     );
   }
 
+  function downloadLeaderboard(comp: CompetitionWithCount) {
+    const entries = leaderboards[comp.id];
+    if (!entries || entries.length === 0) {
+      return;
+    }
+    const max = maxMarks[comp.id] || 0;
+    const headers = ['Rank', 'Player', 'Correct Marks', 'Negative Marks', 'Total Marks', 'Max Marks', 'Percentage', 'Status', 'Started At', 'Submitted At'];
+    const rows = entries.map((e, i) => [
+      i + 1,
+      e.student_name,
+      e.correct_marks,
+      e.negative_marks,
+      e.total_marks,
+      max,
+      max ? `${Math.round((e.total_marks / max) * 100)}%` : '0%',
+      e.isLate ? 'LATE' : 'ON TIME',
+      e.started_at || '',
+      e.submitted_at || '',
+    ]);
+    downloadCSV(`leaderboard-${comp.name.replace(/\s+/g, '-')}.csv`, headers, rows);
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   }
