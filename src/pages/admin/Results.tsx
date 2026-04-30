@@ -380,7 +380,7 @@ export default function Results() {
           {compsWithSubmissions.length > 0 && (
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <Trophy className="w-5 h-5 text-primary" />
                     <span className="font-display">{compsWithSubmissions[0].name}</span>
@@ -388,10 +388,20 @@ export default function Results() {
                       {formatCompDate(compsWithSubmissions[0])}
                     </span>
                   </div>
-                  <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    {compsWithSubmissions[0].submission_count} players
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      {compsWithSubmissions[0].submission_count} players
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadLeaderboard(compsWithSubmissions[0])}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Download
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
