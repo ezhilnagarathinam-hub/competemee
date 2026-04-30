@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, Zap, Users, Download } from 'lucide-react';
-import { downloadCSV } from '@/lib/csvExport';
+import { Trophy, Medal, Award, Zap, Users } from 'lucide-react';
+import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
