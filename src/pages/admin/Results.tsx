@@ -435,6 +435,12 @@ export default function Results() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
+                        <div className="flex justify-end mb-2">
+                          <Button size="sm" variant="outline" onClick={() => downloadLeaderboard(comp)}>
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </Button>
+                        </div>
                         {renderLeaderboard(comp.id)}
                       </AccordionContent>
                     </AccordionItem>
