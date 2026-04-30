@@ -405,6 +405,7 @@ export default function Students() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {loading ? (
