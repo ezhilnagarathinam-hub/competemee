@@ -8,6 +8,7 @@ import {
   Settings, 
   LogOut,
   ClipboardList,
+  FileBarChart,
   LifeBuoy,
   Zap,
   Menu,
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/admin/questions', icon: FileQuestion, label: 'Questions' },
   { path: '/admin/students', icon: Users, label: 'Students' },
   { path: '/admin/results', icon: ClipboardList, label: 'Results' },
+  { path: '/admin/reports', icon: FileBarChart, label: 'Reports' },
   { path: '/admin/support', icon: LifeBuoy, label: 'Support' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];

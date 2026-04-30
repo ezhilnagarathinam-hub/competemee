@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, Zap, Users } from 'lucide-react';
+import { Trophy, Medal, Award, Zap, Users, Download } from 'lucide-react';
+import { downloadCSV } from '@/lib/csvExport';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -315,6 +317,28 @@ export default function Results() {
     );
   }
 
+  function downloadLeaderboard(comp: CompetitionWithCount) {
+    const entries = leaderboards[comp.id];
+    if (!entries || entries.length === 0) {
+      return;
+    }
+    const max = maxMarks[comp.id] || 0;
+    const headers = ['Rank', 'Player', 'Correct Marks', 'Negative Marks', 'Total Marks', 'Max Marks', 'Percentage', 'Status', 'Started At', 'Submitted At'];
+    const rows = entries.map((e, i) => [
+      i + 1,
+      e.student_name,
+      e.correct_marks,
+      e.negative_marks,
+      e.total_marks,
+      max,
+      max ? `${Math.round((e.total_marks / max) * 100)}%` : '0%',
+      e.isLate ? 'LATE' : 'ON TIME',
+      e.started_at || '',
+      e.submitted_at || '',
+    ]);
+    downloadCSV(`leaderboard-${comp.name.replace(/\s+/g, '-')}.csv`, headers, rows);
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-muted-foreground">Loading...</div>;
   }
@@ -356,7 +380,7 @@ export default function Results() {
           {compsWithSubmissions.length > 0 && (
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <Trophy className="w-5 h-5 text-primary" />
                     <span className="font-display">{compsWithSubmissions[0].name}</span>
@@ -364,10 +388,20 @@ export default function Results() {
                       {formatCompDate(compsWithSubmissions[0])}
                     </span>
                   </div>
-                  <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    {compsWithSubmissions[0].submission_count} players
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      {compsWithSubmissions[0].submission_count} players
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadLeaderboard(compsWithSubmissions[0])}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Download
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -401,6 +435,12 @@ export default function Results() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
+                        <div className="flex justify-end mb-2">
+                          <Button size="sm" variant="outline" onClick={() => downloadLeaderboard(comp)}>
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </Button>
+                        </div>
                         {renderLeaderboard(comp.id)}
                       </AccordionContent>
                     </AccordionItem>

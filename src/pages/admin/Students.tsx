@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock } from 'lucide-react';
+import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock, Download } from 'lucide-react';
+import { downloadCSV } from '@/lib/csvExport';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -264,6 +265,29 @@ export default function Students() {
           <p className="text-muted-foreground mt-1">Enroll and manage competitors</p>
         </div>
         
+        <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            const headers = ['Student #', 'Name', 'Phone', 'Email', 'Address', 'Username', 'Password', 'Competitions Assigned'];
+            const data = students.map(s => [
+              s.student_number,
+              s.name,
+              s.phone,
+              s.email || '',
+              s.address || '',
+              s.username,
+              s.password,
+              getCompetitionInfo(s.id).map(c => c.name).join('; '),
+            ]);
+            downloadCSV(`players-${new Date().toISOString().split('T')[0]}.csv`, headers, data);
+            toast.success('Players downloaded');
+          }}
+          disabled={students.length === 0}
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Download
+        </Button>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="gradient-primary text-primary-foreground shadow-primary compete-btn">
@@ -381,6 +405,7 @@ export default function Students() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {loading ? (
