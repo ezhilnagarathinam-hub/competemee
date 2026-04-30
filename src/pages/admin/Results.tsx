@@ -390,14 +390,19 @@ export default function Results() {
                       <Users className="w-4 h-4" />
                       {compsWithSubmissions[0].submission_count} players
                     </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadLeaderboard(compsWithSubmissions[0])}
-                    >
-                      <Download className="w-3 h-3 mr-1" />
-                      Download
-                    </Button>
+                    {(() => {
+                      const x = leaderboardExport(compsWithSubmissions[0]);
+                      return (
+                        <DownloadMenu
+                          size="sm"
+                          filename={x.filename}
+                          title={x.title}
+                          headers={x.headers}
+                          rows={x.rows}
+                          disabled={x.rows.length === 0}
+                        />
+                      );
+                    })()}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -433,10 +438,19 @@ export default function Results() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="flex justify-end mb-2">
-                          <Button size="sm" variant="outline" onClick={() => downloadLeaderboard(comp)}>
-                            <Download className="w-3 h-3 mr-1" />
-                            Download
-                          </Button>
+                          {(() => {
+                            const x = leaderboardExport(comp);
+                            return (
+                              <DownloadMenu
+                                size="sm"
+                                filename={x.filename}
+                                title={x.title}
+                                headers={x.headers}
+                                rows={x.rows}
+                                disabled={x.rows.length === 0}
+                              />
+                            );
+                          })()}
                         </div>
                         {renderLeaderboard(comp.id)}
                       </AccordionContent>
