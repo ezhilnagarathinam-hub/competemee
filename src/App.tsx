@@ -16,6 +16,7 @@ import Competitions from "./pages/admin/Competitions";
 import Questions from "./pages/admin/Questions";
 import Students from "./pages/admin/Students";
 import Results from "./pages/admin/Results";
+import Reports from "./pages/admin/Reports";
 import Support from "./pages/admin/Support";
 import Settings from "./pages/admin/Settings";
 import { AdminLayout } from "./components/admin/AdminLayout";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="questions" element={<Questions />} />
             <Route path="students" element={<Students />} />
             <Route path="results" element={<Results />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="support" element={<Support />} />
             <Route path="settings" element={<Settings />} />
           </Route>
