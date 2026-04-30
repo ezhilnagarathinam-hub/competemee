@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, Zap, Users, Download } from 'lucide-react';
-import { downloadCSV } from '@/lib/csvExport';
+import { Trophy, Medal, Award, Zap, Users } from 'lucide-react';
+import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -317,11 +317,8 @@ export default function Results() {
     );
   }
 
-  function downloadLeaderboard(comp: CompetitionWithCount) {
-    const entries = leaderboards[comp.id];
-    if (!entries || entries.length === 0) {
-      return;
-    }
+  function leaderboardExport(comp: CompetitionWithCount) {
+    const entries = leaderboards[comp.id] || [];
     const max = maxMarks[comp.id] || 0;
     const headers = ['Rank', 'Player', 'Correct Marks', 'Negative Marks', 'Total Marks', 'Max Marks', 'Percentage', 'Status', 'Started At', 'Submitted At'];
     const rows = entries.map((e, i) => [
@@ -336,7 +333,7 @@ export default function Results() {
       e.started_at || '',
       e.submitted_at || '',
     ]);
-    downloadCSV(`leaderboard-${comp.name.replace(/\s+/g, '-')}.csv`, headers, rows);
+    return { headers, rows, filename: `leaderboard-${comp.name.replace(/\s+/g, '-')}`, title: `${comp.name} — Leaderboard` };
   }
 
   if (loading) {
@@ -393,14 +390,19 @@ export default function Results() {
                       <Users className="w-4 h-4" />
                       {compsWithSubmissions[0].submission_count} players
                     </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadLeaderboard(compsWithSubmissions[0])}
-                    >
-                      <Download className="w-3 h-3 mr-1" />
-                      Download
-                    </Button>
+                    {(() => {
+                      const x = leaderboardExport(compsWithSubmissions[0]);
+                      return (
+                        <DownloadMenu
+                          size="sm"
+                          filename={x.filename}
+                          title={x.title}
+                          headers={x.headers}
+                          rows={x.rows}
+                          disabled={x.rows.length === 0}
+                        />
+                      );
+                    })()}
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -436,10 +438,19 @@ export default function Results() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="flex justify-end mb-2">
-                          <Button size="sm" variant="outline" onClick={() => downloadLeaderboard(comp)}>
-                            <Download className="w-3 h-3 mr-1" />
-                            Download
-                          </Button>
+                          {(() => {
+                            const x = leaderboardExport(comp);
+                            return (
+                              <DownloadMenu
+                                size="sm"
+                                filename={x.filename}
+                                title={x.title}
+                                headers={x.headers}
+                                rows={x.rows}
+                                disabled={x.rows.length === 0}
+                              />
+                            );
+                          })()}
                         </div>
                         {renderLeaderboard(comp.id)}
                       </AccordionContent>
