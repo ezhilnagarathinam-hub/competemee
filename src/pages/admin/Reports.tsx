@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Download, FileText, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { downloadCSV } from '@/lib/csvExport';
+import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { toast } from 'sonner';
 
 interface ReportRow {
