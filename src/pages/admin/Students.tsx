@@ -310,65 +310,11 @@ export default function Students() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold text-foreground font-display">PLAYERS</h1>
           <p className="text-muted-foreground mt-1">Enroll and manage competitors</p>
         </div>
-      </div>
-
-      {/* Search + Bulk-assign toolbar */}
-      <Card className="glass-card border-primary/20">
-        <CardContent className="p-4 flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[240px] space-y-1">
-            <Label htmlFor="searchPlayers" className="text-xs uppercase tracking-wide text-muted-foreground">Search Players</Label>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="searchPlayers"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, login ID or phone…"
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[260px] space-y-1">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Assign Competition to ALL Players</Label>
-            <div className="flex gap-2">
-              <Select value={bulkAssignCompId} onValueChange={setBulkAssignCompId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Choose competition…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {competitions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={bulkAssignToAll}
-                disabled={!bulkAssignCompId || bulkAssigning || students.length === 0}
-                className="gradient-primary text-primary-foreground"
-              >
-                <UserPlus2 className="w-4 h-4 mr-2" />
-                Allot to All
-              </Button>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Showing</p>
-            <p className="text-2xl font-bold text-primary font-display">
-              {filteredStudents.length}
-              <span className="text-sm text-muted-foreground font-normal"> / {students.length}</span>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="hidden">
 
         <div className="flex gap-2">
         <DownloadMenu
@@ -378,6 +324,16 @@ export default function Students() {
           rows={students.map(s => [
             s.student_number,
             s.name,
+            s.phone,
+            s.email || '',
+            s.address || '',
+            s.username,
+            s.password,
+            getCompetitionInfo(s.id).map(c => c.name).join('; '),
+          ])}
+          disabled={students.length === 0}
+        />
+      </div>
             s.phone,
             s.email || '',
             s.address || '',
