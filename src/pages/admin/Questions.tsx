@@ -564,6 +564,13 @@ export default function Questions() {
             </SelectContent>
           </Select>
 
+          {/* Download Questions */}
+          <DownloadQuestionsDialog
+            questions={questions as any}
+            competitionName={competitions.find(c => c.id === selectedCompetition)?.name}
+            disabled={!selectedCompetition || questions.length === 0}
+          />
+
           {/* OCR Upload Dialog */}
           <Dialog open={ocrDialogOpen} onOpenChange={setOcrDialogOpen}>
             <DialogTrigger asChild>
