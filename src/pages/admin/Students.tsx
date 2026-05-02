@@ -333,16 +333,6 @@ export default function Students() {
           ])}
           disabled={students.length === 0}
         />
-      </div>
-            s.phone,
-            s.email || '',
-            s.address || '',
-            s.username,
-            s.password,
-            getCompetitionInfo(s.id).map(c => c.name).join('; '),
-          ])}
-          disabled={students.length === 0}
-        />
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="gradient-primary text-primary-foreground shadow-primary compete-btn">
