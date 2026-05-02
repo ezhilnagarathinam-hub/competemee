@@ -528,7 +528,7 @@ export default function Students() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <TableRow key={student.id} className="hover:bg-primary/5">
                   <TableCell className="font-bold">{student.name}</TableCell>
                   <TableCell>{student.phone}</TableCell>
