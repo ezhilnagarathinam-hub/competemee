@@ -24,7 +24,10 @@ export default function Students() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedCompetitions, setSelectedCompetitions] = useState<string[]>([]);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [bulkAssignCompId, setBulkAssignCompId] = useState<string>('');
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
