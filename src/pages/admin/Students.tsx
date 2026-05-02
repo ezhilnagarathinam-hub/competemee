@@ -57,7 +57,10 @@ export default function Students() {
         .order('student_number');
 
       if (error) throw error;
-      setStudents((data as Student[]) || []);
+      const sorted = ((data as Student[]) || []).slice().sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      );
+      setStudents(sorted);
 
       const { data: scData } = await supabase
         .from('student_competitions')
