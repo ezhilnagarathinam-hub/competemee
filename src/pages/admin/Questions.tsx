@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, Question } from '@/types/database';
 import { softDelete } from '@/lib/undoDelete';
+import { DownloadQuestionsDialog } from '@/components/admin/DownloadQuestionsDialog';
 
 export default function Questions() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -562,6 +563,13 @@ export default function Questions() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Download Questions */}
+          <DownloadQuestionsDialog
+            questions={questions as any}
+            competitionName={competitions.find(c => c.id === selectedCompetition)?.name}
+            disabled={!selectedCompetition || questions.length === 0}
+          />
 
           {/* OCR Upload Dialog */}
           <Dialog open={ocrDialogOpen} onOpenChange={setOcrDialogOpen}>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock, Search, UserPlus2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +24,10 @@ export default function Students() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedCompetitions, setSelectedCompetitions] = useState<string[]>([]);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [bulkAssignCompId, setBulkAssignCompId] = useState<string>('');
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -53,7 +57,10 @@ export default function Students() {
         .order('student_number');
 
       if (error) throw error;
-      setStudents((data as Student[]) || []);
+      const sorted = ((data as Student[]) || []).slice().sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      );
+      setStudents(sorted);
 
       const { data: scData } = await supabase
         .from('student_competitions')
@@ -84,6 +91,50 @@ export default function Students() {
       setCompetitions((data as Competition[]) || []);
     } catch (error) {
       console.error('Error fetching competitions:', error);
+    }
+  }
+
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.username || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      String(s.student_number || '').includes(q)
+    );
+  }, [students, searchQuery]);
+
+  async function bulkAssignToAll() {
+    if (!bulkAssignCompId) {
+      toast.error('Select a competition first');
+      return;
+    }
+    if (students.length === 0) {
+      toast.error('No players to assign');
+      return;
+    }
+    if (!confirm(`Assign this competition to all ${students.length} players?`)) return;
+
+    setBulkAssigning(true);
+    try {
+      const toInsert = students
+        .filter(s => !(studentCompetitions[s.id] || []).some((sc: any) => sc.competition_id === bulkAssignCompId))
+        .map(s => ({ student_id: s.id, competition_id: bulkAssignCompId }));
+
+      if (toInsert.length === 0) {
+        toast.info('All players are already assigned to this competition');
+      } else {
+        const { error } = await supabase.from('student_competitions').insert(toInsert);
+        if (error) throw error;
+        toast.success(`Assigned to ${toInsert.length} player(s)`);
+      }
+      fetchStudents();
+    } catch (error) {
+      console.error('Bulk assign error:', error);
+      toast.error('Failed to assign to all players');
+    } finally {
+      setBulkAssigning(false);
     }
   }
 
@@ -259,12 +310,12 @@ export default function Students() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold text-foreground font-display">PLAYERS</h1>
           <p className="text-muted-foreground mt-1">Enroll and manage competitors</p>
         </div>
-        
+
         <div className="flex gap-2">
         <DownloadMenu
           filename={`players-${new Date().toISOString().split('T')[0]}`}
@@ -402,6 +453,57 @@ export default function Students() {
         </div>
       </div>
 
+      {/* Search + Bulk-assign toolbar */}
+      <Card className="glass-card border-primary/20">
+        <CardContent className="p-4 flex flex-wrap items-end gap-4">
+          <div className="flex-1 min-w-[240px] space-y-1">
+            <Label htmlFor="searchPlayers" className="text-xs uppercase tracking-wide text-muted-foreground">Search Players</Label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="searchPlayers"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, login ID or phone…"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-[260px] space-y-1">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Assign Competition to ALL Players</Label>
+            <div className="flex gap-2">
+              <Select value={bulkAssignCompId} onValueChange={setBulkAssignCompId}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Choose competition…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {competitions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={bulkAssignToAll}
+                disabled={!bulkAssignCompId || bulkAssigning || students.length === 0}
+                className="gradient-primary text-primary-foreground"
+              >
+                <UserPlus2 className="w-4 h-4 mr-2" />
+                Allot to All
+              </Button>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Showing</p>
+            <p className="text-2xl font-bold text-primary font-display">
+              {filteredStudents.length}
+              <span className="text-sm text-muted-foreground font-normal"> / {students.length}</span>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : students.length === 0 ? (
@@ -426,7 +528,7 @@ export default function Students() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <TableRow key={student.id} className="hover:bg-primary/5">
                   <TableCell className="font-bold">{student.name}</TableCell>
                   <TableCell>{student.phone}</TableCell>
