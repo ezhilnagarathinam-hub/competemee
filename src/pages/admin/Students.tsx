@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock, Search, UserPlus2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
