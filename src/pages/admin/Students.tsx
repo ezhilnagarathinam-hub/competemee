@@ -94,6 +94,50 @@ export default function Students() {
     }
   }
 
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.username || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      String(s.student_number || '').includes(q)
+    );
+  }, [students, searchQuery]);
+
+  async function bulkAssignToAll() {
+    if (!bulkAssignCompId) {
+      toast.error('Select a competition first');
+      return;
+    }
+    if (students.length === 0) {
+      toast.error('No players to assign');
+      return;
+    }
+    if (!confirm(`Assign this competition to all ${students.length} players?`)) return;
+
+    setBulkAssigning(true);
+    try {
+      const toInsert = students
+        .filter(s => !(studentCompetitions[s.id] || []).some((sc: any) => sc.competition_id === bulkAssignCompId))
+        .map(s => ({ student_id: s.id, competition_id: bulkAssignCompId }));
+
+      if (toInsert.length === 0) {
+        toast.info('All players are already assigned to this competition');
+      } else {
+        const { error } = await supabase.from('student_competitions').insert(toInsert);
+        if (error) throw error;
+        toast.success(`Assigned to ${toInsert.length} player(s)`);
+      }
+      fetchStudents();
+    } catch (error) {
+      console.error('Bulk assign error:', error);
+      toast.error('Failed to assign to all players');
+    } finally {
+      setBulkAssigning(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
