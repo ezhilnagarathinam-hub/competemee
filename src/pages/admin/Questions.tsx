@@ -165,7 +165,10 @@ export default function Questions() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
+    if (saving) return;
+
+    setSaving(true);
     try {
       if (editingId) {
         const { error } = await supabase
@@ -183,6 +186,7 @@ export default function Questions() {
           })
           .eq('id', editingId);
         if (error) throw error;
+        queueScrollToQuestion(editingId);
         toast.success('Question updated successfully');
       } else {
         const nextNumber = questions.length + 1;
@@ -202,26 +206,45 @@ export default function Questions() {
             image_url: formData.image_url || null,
           }]);
         if (error) throw error;
+        queueScrollToQuestion(null);
         toast.success('Question added successfully');
       }
       
       setDialogOpen(false);
       resetForm();
-      fetchQuestions(selectedCompetition);
+      await fetchQuestions(selectedCompetition);
     } catch (error) {
       console.error('Error saving question:', error);
       toast.error('Failed to save question');
+    } finally {
+      setSaving(false);
     }
   }
 
   async function deleteQuestion(id: string) {
     if (!confirm('Are you sure you want to delete this question?')) return;
-    await softDelete({
-      table: 'questions',
-      ids: [id],
-      label: 'Question',
-      onChange: () => fetchQuestions(selectedCompetition),
-    });
+
+    const nextAnchorId = questions.find((question) => question.id !== id)?.id ?? null;
+
+    try {
+      setMutatingQuestionIds((prev) => [...prev, id]);
+      queueScrollToQuestion(nextAnchorId);
+
+      const remainingQuestions = questions.filter((question) => question.id !== id);
+      const { error: deleteError } = await supabase.from('questions').delete().eq('id', id);
+      if (deleteError) throw deleteError;
+
+      await persistQuestionOrder(remainingQuestions);
+      await fetchQuestions(selectedCompetition);
+      toast.success('Question deleted successfully');
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      toast.error('Failed to delete question');
+      queueScrollToQuestion(id);
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setMutatingQuestionIds((prev) => prev.filter((questionId) => questionId !== id));
+    }
   }
 
   async function deleteSelectedQuestions() {
@@ -229,33 +252,50 @@ export default function Questions() {
     if (!confirm(`Delete ${selectedQuestionIds.length} selected question(s)?`)) return;
 
     setBulkDeleting(true);
+
     const ids = [...selectedQuestionIds];
-    await softDelete({
-      table: 'questions',
-      ids,
-      label: 'Question',
-      onChange: () => fetchQuestions(selectedCompetition),
-    });
-    setSelectedQuestionIds([]);
-    setBulkDeleting(false);
+    const nextAnchorId = questions.find((question) => !ids.includes(question.id))?.id ?? null;
+
+    try {
+      queueScrollToQuestion(nextAnchorId);
+
+      const remainingQuestions = questions.filter((question) => !ids.includes(question.id));
+      const { error: deleteError } = await supabase.from('questions').delete().in('id', ids);
+      if (deleteError) throw deleteError;
+
+      await persistQuestionOrder(remainingQuestions);
+      setSelectedQuestionIds([]);
+      await fetchQuestions(selectedCompetition);
+      toast.success(`${ids.length} question${ids.length === 1 ? '' : 's'} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting selected questions:', error);
+      toast.error('Failed to delete selected questions');
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setBulkDeleting(false);
+    }
   }
 
   async function moveQuestion(index: number, direction: 'up' | 'down') {
+    if (reordering) return;
+
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= questions.length) return;
 
-    const q1 = questions[index];
-    const q2 = questions[swapIndex];
+    const reordered = [...questions];
+    const [movedQuestion] = reordered.splice(index, 1);
+    reordered.splice(swapIndex, 0, movedQuestion);
 
     try {
-      await Promise.all([
-        supabase.from('questions').update({ question_number: q2.question_number }).eq('id', q1.id),
-        supabase.from('questions').update({ question_number: q1.question_number }).eq('id', q2.id),
-      ]);
-      fetchQuestions(selectedCompetition);
+      setReordering(true);
+      queueScrollToQuestion(movedQuestion.id);
+      await persistQuestionOrder(reordered);
+      await fetchQuestions(selectedCompetition);
     } catch (error) {
       console.error('Error reordering:', error);
       toast.error('Failed to reorder');
+    } finally {
+      setReordering(false);
     }
   }
 
