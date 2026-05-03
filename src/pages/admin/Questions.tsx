@@ -487,16 +487,20 @@ export default function Questions() {
   }
 
   function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Allow typing digits and a single decimal point — preserve raw text so "2." stays visible
     let cleaned = e.target.value.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
     setDefaultMarksText(cleaned);
-    // Only commit when there's a valid finite number (not just "" or ".")
-    const num = parseFloat(cleaned);
+  }
+
+  function commitDefaultMarksInput() {
+    const num = parseFloat(defaultMarksText);
     if (Number.isFinite(num) && num > 0) {
       void handleDefaultMarksChange(num);
+      return;
     }
+
+    setDefaultMarksText(String(defaultMarks || 1));
   }
 
   function handleTargetTotalChange(value: number) {
