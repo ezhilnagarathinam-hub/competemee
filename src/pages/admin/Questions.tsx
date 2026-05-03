@@ -802,6 +802,16 @@ export default function Questions() {
             </DialogContent>
           </Dialog>
 
+          <Button
+            variant="outline"
+            onClick={fixNumbering}
+            disabled={!selectedCompetition || reordering || questions.length === 0}
+            title="Renumber questions sequentially (1, 2, 3...)"
+          >
+            {reordering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowUp className="w-4 h-4 mr-2" />}
+            Fix Numbering
+          </Button>
+
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();
