@@ -157,9 +157,39 @@ export default function Questions() {
         .order('question_number');
 
       if (error) throw error;
-      setQuestions((data as Question[]) || []);
+      const list = (data as Question[]) || [];
+      // Auto-fix numbering if gaps/duplicates exist
+      const needsFix = list.some((q, i) => q.question_number !== i + 1);
+      if (needsFix) {
+        const renumbered = renumberQuestions(list);
+        setQuestions(renumbered);
+        try {
+          await persistQuestionOrder(list);
+        } catch (e) {
+          console.error('Auto-renumber failed:', e);
+        }
+      } else {
+        setQuestions(list);
+      }
     } catch (error) {
       console.error('Error fetching questions:', error);
+    }
+  }
+
+  async function fixNumbering() {
+    if (reordering || questions.length === 0) return;
+    try {
+      setReordering(true);
+      const sorted = [...questions].sort((a, b) => a.question_number - b.question_number);
+      setQuestions(renumberQuestions(sorted));
+      await persistQuestionOrder(sorted);
+      toast.success('Question numbers fixed');
+    } catch (error) {
+      console.error('Error fixing numbers:', error);
+      toast.error('Failed to fix numbering');
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -771,6 +801,16 @@ export default function Questions() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Button
+            variant="outline"
+            onClick={fixNumbering}
+            disabled={!selectedCompetition || reordering || questions.length === 0}
+            title="Renumber questions sequentially (1, 2, 3...)"
+          >
+            {reordering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowUp className="w-4 h-4 mr-2" />}
+            Fix Numbering
+          </Button>
 
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
