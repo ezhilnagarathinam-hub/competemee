@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Edit, FileQuestion, FileImage, Loader2, Sparkles, Copy, ArrowUp, ArrowDown, BookOpen, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, Question } from '@/types/database';
-import { softDelete } from '@/lib/undoDelete';
 import { DownloadQuestionsDialog } from '@/components/admin/DownloadQuestionsDialog';
 
 export default function Questions() {
@@ -31,11 +30,16 @@ export default function Questions() {
   const [bulkParsing, setBulkParsing] = useState(false);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [mutatingQuestionIds, setMutatingQuestionIds] = useState<string[]>([]);
 
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
   const [defaultMarksText, setDefaultMarksText] = useState<string>('1');
   const [targetTotal, setTargetTotal] = useState<number>(0);
   const [marksText, setMarksText] = useState<string>('1');
+  const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingScrollId = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     question_text: '',
@@ -74,7 +78,56 @@ export default function Questions() {
     setSelectedQuestionIds([]);
   }, [selectedCompetition, questions.length]);
 
+  useEffect(() => {
+    if (!pendingScrollId.current) return;
+
+    const targetId = pendingScrollId.current;
+    pendingScrollId.current = null;
+
+    requestAnimationFrame(() => {
+      questionRefs.current[targetId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  }, [questions]);
+
   const allSelected = useMemo(() => questions.length > 0 && selectedQuestionIds.length === questions.length, [questions.length, selectedQuestionIds.length]);
+
+  function queueScrollToQuestion(id?: string | null) {
+    pendingScrollId.current = id ?? null;
+  }
+
+  function renumberQuestions(items: Question[]) {
+    return items.map((question, index) => ({
+      ...question,
+      question_number: index + 1,
+    }));
+  }
+
+  async function persistQuestionOrder(items: Question[]) {
+    const changed = items
+      .map((question, index) => ({
+        id: question.id,
+        nextNumber: index + 1,
+        currentNumber: question.question_number,
+      }))
+      .filter((question) => question.currentNumber !== question.nextNumber);
+
+    if (changed.length === 0) return;
+
+    const results = await Promise.all(
+      changed.map((question) =>
+        supabase
+          .from('questions')
+          .update({ question_number: question.nextNumber })
+          .eq('id', question.id)
+      )
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
+  }
 
   async function fetchCompetitions() {
     try {
@@ -112,10 +165,13 @@ export default function Questions() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
+    if (saving) return;
+
+    setSaving(true);
     try {
       if (editingId) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('questions')
           .update({
             question_text: formData.question_text,
@@ -128,12 +184,17 @@ export default function Questions() {
             explanation: formData.explanation || null,
             image_url: formData.image_url || null,
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .select('*')
+          .single();
         if (error) throw error;
+
+        setQuestions((prev) => prev.map((question) => (question.id === editingId ? (data as Question) : question)));
+        queueScrollToQuestion(editingId);
         toast.success('Question updated successfully');
       } else {
         const nextNumber = questions.length + 1;
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('questions')
           .insert([{
             question_text: formData.question_text,
@@ -147,28 +208,51 @@ export default function Questions() {
             competition_id: selectedCompetition,
             question_number: nextNumber,
             image_url: formData.image_url || null,
-          }]);
+          }])
+          .select('*')
+          .single();
         if (error) throw error;
+
+        setQuestions((prev) => [...prev, data as Question]);
+        queueScrollToQuestion((data as Question).id);
         toast.success('Question added successfully');
       }
       
       setDialogOpen(false);
       resetForm();
-      fetchQuestions(selectedCompetition);
     } catch (error) {
       console.error('Error saving question:', error);
       toast.error('Failed to save question');
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setSaving(false);
     }
   }
 
   async function deleteQuestion(id: string) {
     if (!confirm('Are you sure you want to delete this question?')) return;
-    await softDelete({
-      table: 'questions',
-      ids: [id],
-      label: 'Question',
-      onChange: () => fetchQuestions(selectedCompetition),
-    });
+
+    const nextAnchorId = questions.find((question) => question.id !== id)?.id ?? null;
+
+    try {
+      setMutatingQuestionIds((prev) => [...prev, id]);
+      queueScrollToQuestion(nextAnchorId);
+
+      const remainingQuestions = questions.filter((question) => question.id !== id);
+      const { error: deleteError } = await supabase.from('questions').delete().eq('id', id);
+      if (deleteError) throw deleteError;
+
+      setQuestions(renumberQuestions(remainingQuestions));
+      await persistQuestionOrder(remainingQuestions);
+      toast.success('Question deleted successfully');
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      toast.error('Failed to delete question');
+      queueScrollToQuestion(id);
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setMutatingQuestionIds((prev) => prev.filter((questionId) => questionId !== id));
+    }
   }
 
   async function deleteSelectedQuestions() {
@@ -176,33 +260,51 @@ export default function Questions() {
     if (!confirm(`Delete ${selectedQuestionIds.length} selected question(s)?`)) return;
 
     setBulkDeleting(true);
+
     const ids = [...selectedQuestionIds];
-    await softDelete({
-      table: 'questions',
-      ids,
-      label: 'Question',
-      onChange: () => fetchQuestions(selectedCompetition),
-    });
-    setSelectedQuestionIds([]);
-    setBulkDeleting(false);
+    const nextAnchorId = questions.find((question) => !ids.includes(question.id))?.id ?? null;
+
+    try {
+      queueScrollToQuestion(nextAnchorId);
+
+      const remainingQuestions = questions.filter((question) => !ids.includes(question.id));
+      const { error: deleteError } = await supabase.from('questions').delete().in('id', ids);
+      if (deleteError) throw deleteError;
+
+      setQuestions(renumberQuestions(remainingQuestions));
+      await persistQuestionOrder(remainingQuestions);
+      setSelectedQuestionIds([]);
+      toast.success(`${ids.length} question${ids.length === 1 ? '' : 's'} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting selected questions:', error);
+      toast.error('Failed to delete selected questions');
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setBulkDeleting(false);
+    }
   }
 
   async function moveQuestion(index: number, direction: 'up' | 'down') {
+    if (reordering) return;
+
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= questions.length) return;
 
-    const q1 = questions[index];
-    const q2 = questions[swapIndex];
+    const reordered = [...questions];
+    const [movedQuestion] = reordered.splice(index, 1);
+    reordered.splice(swapIndex, 0, movedQuestion);
 
     try {
-      await Promise.all([
-        supabase.from('questions').update({ question_number: q2.question_number }).eq('id', q1.id),
-        supabase.from('questions').update({ question_number: q1.question_number }).eq('id', q2.id),
-      ]);
-      fetchQuestions(selectedCompetition);
+      setReordering(true);
+      queueScrollToQuestion(movedQuestion.id);
+      setQuestions(renumberQuestions(reordered));
+      await persistQuestionOrder(reordered);
     } catch (error) {
       console.error('Error reordering:', error);
       toast.error('Failed to reorder');
+      await fetchQuestions(selectedCompetition);
+    } finally {
+      setReordering(false);
     }
   }
 
@@ -385,16 +487,20 @@ export default function Questions() {
   }
 
   function handleDefaultMarksInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Allow typing digits and a single decimal point — preserve raw text so "2." stays visible
     let cleaned = e.target.value.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('');
     setDefaultMarksText(cleaned);
-    // Only commit when there's a valid finite number (not just "" or ".")
-    const num = parseFloat(cleaned);
+  }
+
+  function commitDefaultMarksInput() {
+    const num = parseFloat(defaultMarksText);
     if (Number.isFinite(num) && num > 0) {
       void handleDefaultMarksChange(num);
+      return;
     }
+
+    setDefaultMarksText(String(defaultMarks || 1));
   }
 
   function handleTargetTotalChange(value: number) {
@@ -825,8 +931,13 @@ export default function Questions() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-primary-foreground compete-btn">
-                  {editingId ? 'Update Question' : 'Add Question'}
+                <Button type="submit" className="w-full gradient-primary text-primary-foreground compete-btn" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {editingId ? 'Updating…' : 'Adding…'}
+                    </>
+                  ) : editingId ? 'Update Question' : 'Add Question'}
                 </Button>
               </form>
             </DialogContent>
@@ -848,11 +959,7 @@ export default function Questions() {
                 pattern="[0-9]*\.?[0-9]*"
                 value={defaultMarksText}
                 onChange={handleDefaultMarksInputChange}
-                onBlur={() => {
-                  if (!defaultMarksText || defaultMarksText === '.') {
-                    setDefaultMarksText(String(defaultMarks || 1));
-                  }
-                }}
+                onBlur={commitDefaultMarksInput}
                 className="w-32"
               />
               <p className="text-[11px] text-muted-foreground">
@@ -914,8 +1021,17 @@ export default function Questions() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {questions.map((q, index) => (
-            <Card key={q.id} className="glass-card hover:border-primary/30 transition-all">
+          {questions.map((q, index) => {
+            const isMutating = mutatingQuestionIds.includes(q.id);
+
+            return (
+              <Card
+                key={q.id}
+                ref={(node) => {
+                  questionRefs.current[q.id] = node;
+                }}
+                className="glass-card hover:border-primary/30 transition-all scroll-mt-24"
+              >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <Checkbox
@@ -924,16 +1040,17 @@ export default function Questions() {
                       setSelectedQuestionIds((prev) => checked ? [...prev, q.id] : prev.filter((id) => id !== q.id));
                     }}
                     className="mt-2"
+                    disabled={bulkDeleting || isMutating || saving || reordering}
                   />
                   {/* Reorder buttons */}
                   <div className="flex flex-col gap-1 items-center">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0} onClick={() => moveQuestion(index, 'up')}>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0 || bulkDeleting || isMutating || reordering || saving} onClick={() => moveQuestion(index, 'up')}>
                       <ArrowUp className="w-4 h-4" />
                     </Button>
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 shadow-primary">
                       <span className="font-bold text-primary-foreground font-display">{q.question_number}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 'down')}>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === questions.length - 1 || bulkDeleting || isMutating || reordering || saving} onClick={() => moveQuestion(index, 'down')}>
                       <ArrowDown className="w-4 h-4" />
                     </Button>
                   </div>
@@ -970,25 +1087,27 @@ export default function Questions() {
                     <p className="mt-2 text-sm text-muted-foreground">Points: <span className="font-bold text-primary">{q.marks}</span></p>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" onClick={() => copyQuestion(q)} className="border-accent/30 hover:bg-accent/10" title="Duplicate">
+                    <Button variant="outline" size="sm" onClick={() => copyQuestion(q)} className="border-accent/30 hover:bg-accent/10" title="Duplicate" disabled={bulkDeleting || isMutating || saving || reordering}>
                       <Copy className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(q)} className="border-primary/30 hover:bg-primary/10">
-                      <Edit className="w-4 h-4" />
+                    <Button variant="outline" size="sm" onClick={() => openEdit(q)} className="border-primary/30 hover:bg-primary/10" disabled={bulkDeleting || isMutating || saving || reordering}>
+                      {isMutating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit className="w-4 h-4" />}
                     </Button>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => deleteQuestion(q.id)}
                       className="text-destructive hover:bg-destructive/10"
+                      disabled={bulkDeleting || isMutating || saving || reordering}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {isMutating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
