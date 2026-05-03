@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Edit, FileQuestion, FileImage, Loader2, Sparkles, Copy, ArrowUp, ArrowDown, BookOpen, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, Question } from '@/types/database';
-import { softDelete } from '@/lib/undoDelete';
 import { DownloadQuestionsDialog } from '@/components/admin/DownloadQuestionsDialog';
 
 export default function Questions() {
@@ -31,11 +30,16 @@ export default function Questions() {
   const [bulkParsing, setBulkParsing] = useState(false);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [mutatingQuestionIds, setMutatingQuestionIds] = useState<string[]>([]);
 
   const [defaultMarks, setDefaultMarks] = useState<number>(1);
   const [defaultMarksText, setDefaultMarksText] = useState<string>('1');
   const [targetTotal, setTargetTotal] = useState<number>(0);
   const [marksText, setMarksText] = useState<string>('1');
+  const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingScrollId = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     question_text: '',
@@ -74,7 +78,56 @@ export default function Questions() {
     setSelectedQuestionIds([]);
   }, [selectedCompetition, questions.length]);
 
+  useEffect(() => {
+    if (!pendingScrollId.current) return;
+
+    const targetId = pendingScrollId.current;
+    pendingScrollId.current = null;
+
+    requestAnimationFrame(() => {
+      questionRefs.current[targetId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  }, [questions]);
+
   const allSelected = useMemo(() => questions.length > 0 && selectedQuestionIds.length === questions.length, [questions.length, selectedQuestionIds.length]);
+
+  function queueScrollToQuestion(id?: string | null) {
+    pendingScrollId.current = id ?? null;
+  }
+
+  function renumberQuestions(items: Question[]) {
+    return items.map((question, index) => ({
+      ...question,
+      question_number: index + 1,
+    }));
+  }
+
+  async function persistQuestionOrder(items: Question[]) {
+    const changed = items
+      .map((question, index) => ({
+        id: question.id,
+        nextNumber: index + 1,
+        currentNumber: question.question_number,
+      }))
+      .filter((question) => question.currentNumber !== question.nextNumber);
+
+    if (changed.length === 0) return;
+
+    const results = await Promise.all(
+      changed.map((question) =>
+        supabase
+          .from('questions')
+          .update({ question_number: question.nextNumber })
+          .eq('id', question.id)
+      )
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
+  }
 
   async function fetchCompetitions() {
     try {
