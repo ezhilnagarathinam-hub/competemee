@@ -171,7 +171,7 @@ export default function Questions() {
     setSaving(true);
     try {
       if (editingId) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('questions')
           .update({
             question_text: formData.question_text,
@@ -184,13 +184,17 @@ export default function Questions() {
             explanation: formData.explanation || null,
             image_url: formData.image_url || null,
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .select('*')
+          .single();
         if (error) throw error;
+
+        setQuestions((prev) => prev.map((question) => (question.id === editingId ? (data as Question) : question)));
         queueScrollToQuestion(editingId);
         toast.success('Question updated successfully');
       } else {
         const nextNumber = questions.length + 1;
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('questions')
           .insert([{
             question_text: formData.question_text,
@@ -204,18 +208,22 @@ export default function Questions() {
             competition_id: selectedCompetition,
             question_number: nextNumber,
             image_url: formData.image_url || null,
-          }]);
+          }])
+          .select('*')
+          .single();
         if (error) throw error;
-        queueScrollToQuestion(null);
+
+        setQuestions((prev) => [...prev, data as Question]);
+        queueScrollToQuestion((data as Question).id);
         toast.success('Question added successfully');
       }
       
       setDialogOpen(false);
       resetForm();
-      await fetchQuestions(selectedCompetition);
     } catch (error) {
       console.error('Error saving question:', error);
       toast.error('Failed to save question');
+      await fetchQuestions(selectedCompetition);
     } finally {
       setSaving(false);
     }
@@ -234,8 +242,8 @@ export default function Questions() {
       const { error: deleteError } = await supabase.from('questions').delete().eq('id', id);
       if (deleteError) throw deleteError;
 
+      setQuestions(renumberQuestions(remainingQuestions));
       await persistQuestionOrder(remainingQuestions);
-      await fetchQuestions(selectedCompetition);
       toast.success('Question deleted successfully');
     } catch (error) {
       console.error('Error deleting question:', error);
@@ -263,9 +271,9 @@ export default function Questions() {
       const { error: deleteError } = await supabase.from('questions').delete().in('id', ids);
       if (deleteError) throw deleteError;
 
+      setQuestions(renumberQuestions(remainingQuestions));
       await persistQuestionOrder(remainingQuestions);
       setSelectedQuestionIds([]);
-      await fetchQuestions(selectedCompetition);
       toast.success(`${ids.length} question${ids.length === 1 ? '' : 's'} deleted successfully`);
     } catch (error) {
       console.error('Error deleting selected questions:', error);
@@ -289,11 +297,12 @@ export default function Questions() {
     try {
       setReordering(true);
       queueScrollToQuestion(movedQuestion.id);
+      setQuestions(renumberQuestions(reordered));
       await persistQuestionOrder(reordered);
-      await fetchQuestions(selectedCompetition);
     } catch (error) {
       console.error('Error reordering:', error);
       toast.error('Failed to reorder');
+      await fetchQuestions(selectedCompetition);
     } finally {
       setReordering(false);
     }
