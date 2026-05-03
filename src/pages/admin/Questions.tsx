@@ -959,11 +959,7 @@ export default function Questions() {
                 pattern="[0-9]*\.?[0-9]*"
                 value={defaultMarksText}
                 onChange={handleDefaultMarksInputChange}
-                onBlur={() => {
-                  if (!defaultMarksText || defaultMarksText === '.') {
-                    setDefaultMarksText(String(defaultMarks || 1));
-                  }
-                }}
+                onBlur={commitDefaultMarksInput}
                 className="w-32"
               />
               <p className="text-[11px] text-muted-foreground">
