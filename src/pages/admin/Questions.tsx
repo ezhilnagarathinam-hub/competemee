@@ -927,8 +927,13 @@ export default function Questions() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-primary-foreground compete-btn">
-                  {editingId ? 'Update Question' : 'Add Question'}
+                <Button type="submit" className="w-full gradient-primary text-primary-foreground compete-btn" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {editingId ? 'Updating…' : 'Adding…'}
+                    </>
+                  ) : editingId ? 'Update Question' : 'Add Question'}
                 </Button>
               </form>
             </DialogContent>
@@ -1020,13 +1025,13 @@ export default function Questions() {
             const isMutating = mutatingQuestionIds.includes(q.id);
 
             return (
-            <Card
-              key={q.id}
-              ref={(node) => {
-                questionRefs.current[q.id] = node;
-              }}
-              className="glass-card hover:border-primary/30 transition-all scroll-mt-24"
-            >
+              <Card
+                key={q.id}
+                ref={(node) => {
+                  questionRefs.current[q.id] = node;
+                }}
+                className="glass-card hover:border-primary/30 transition-all scroll-mt-24"
+              >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <Checkbox
@@ -1100,8 +1105,9 @@ export default function Questions() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          )})}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
