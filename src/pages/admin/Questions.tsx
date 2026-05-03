@@ -1016,8 +1016,17 @@ export default function Questions() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {questions.map((q, index) => (
-            <Card key={q.id} className="glass-card hover:border-primary/30 transition-all">
+          {questions.map((q, index) => {
+            const isMutating = mutatingQuestionIds.includes(q.id);
+
+            return (
+            <Card
+              key={q.id}
+              ref={(node) => {
+                questionRefs.current[q.id] = node;
+              }}
+              className="glass-card hover:border-primary/30 transition-all scroll-mt-24"
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <Checkbox
@@ -1026,16 +1035,17 @@ export default function Questions() {
                       setSelectedQuestionIds((prev) => checked ? [...prev, q.id] : prev.filter((id) => id !== q.id));
                     }}
                     className="mt-2"
+                    disabled={bulkDeleting || isMutating || saving || reordering}
                   />
                   {/* Reorder buttons */}
                   <div className="flex flex-col gap-1 items-center">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0} onClick={() => moveQuestion(index, 'up')}>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === 0 || bulkDeleting || isMutating || reordering || saving} onClick={() => moveQuestion(index, 'up')}>
                       <ArrowUp className="w-4 h-4" />
                     </Button>
                     <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 shadow-primary">
                       <span className="font-bold text-primary-foreground font-display">{q.question_number}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 'down')}>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={index === questions.length - 1 || bulkDeleting || isMutating || reordering || saving} onClick={() => moveQuestion(index, 'down')}>
                       <ArrowDown className="w-4 h-4" />
                     </Button>
                   </div>
@@ -1072,25 +1082,26 @@ export default function Questions() {
                     <p className="mt-2 text-sm text-muted-foreground">Points: <span className="font-bold text-primary">{q.marks}</span></p>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" onClick={() => copyQuestion(q)} className="border-accent/30 hover:bg-accent/10" title="Duplicate">
+                    <Button variant="outline" size="sm" onClick={() => copyQuestion(q)} className="border-accent/30 hover:bg-accent/10" title="Duplicate" disabled={bulkDeleting || isMutating || saving || reordering}>
                       <Copy className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(q)} className="border-primary/30 hover:bg-primary/10">
-                      <Edit className="w-4 h-4" />
+                    <Button variant="outline" size="sm" onClick={() => openEdit(q)} className="border-primary/30 hover:bg-primary/10" disabled={bulkDeleting || isMutating || saving || reordering}>
+                      {isMutating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit className="w-4 h-4" />}
                     </Button>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => deleteQuestion(q.id)}
                       className="text-destructive hover:bg-destructive/10"
+                      disabled={bulkDeleting || isMutating || saving || reordering}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {isMutating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
     </div>
