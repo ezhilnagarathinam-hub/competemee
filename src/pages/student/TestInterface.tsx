@@ -372,10 +372,29 @@ export default function TestInterface() {
 
       setHasStarted(true);
       setReadyDialogOpen(false);
+
+      // If this paper has bilingual questions, ask the student which language to view
+      const hasBilingual = questions.some(q => q.secondary_language && q.question_text_secondary);
+      if (hasBilingual) {
+        const saved = localStorage.getItem(`langMode:${competitionId}`);
+        if (saved === 'primary' || saved === 'secondary' || saved === 'both') {
+          setLanguageMode(saved);
+        } else {
+          setLanguageDialogOpen(true);
+        }
+      }
     } catch (error) {
       console.error('Error starting test:', error);
       toast.error('Failed to start test');
     }
+  };
+
+  const chooseLanguage = (mode: 'primary' | 'secondary' | 'both') => {
+    setLanguageMode(mode);
+    if (competitionId) {
+      try { localStorage.setItem(`langMode:${competitionId}`, mode); } catch { /* ignore */ }
+    }
+    setLanguageDialogOpen(false);
   };
 
   const saveAnswer = useCallback(async (questionId: string, answer: 'A' | 'B' | 'C' | 'D' | null, isReview: boolean) => {
