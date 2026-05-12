@@ -192,45 +192,66 @@ export type Database = {
           correct_answer: string
           created_at: string | null
           explanation: string | null
+          explanation_secondary: string | null
           id: string
           image_url: string | null
           marks: number | null
           option_a: string
+          option_a_secondary: string | null
           option_b: string
+          option_b_secondary: string | null
           option_c: string
+          option_c_secondary: string | null
           option_d: string
+          option_d_secondary: string | null
           question_number: number
           question_text: string
+          question_text_secondary: string | null
+          secondary_language: string | null
         }
         Insert: {
           competition_id: string
           correct_answer: string
           created_at?: string | null
           explanation?: string | null
+          explanation_secondary?: string | null
           id?: string
           image_url?: string | null
           marks?: number | null
           option_a: string
+          option_a_secondary?: string | null
           option_b: string
+          option_b_secondary?: string | null
           option_c: string
+          option_c_secondary?: string | null
           option_d: string
+          option_d_secondary?: string | null
           question_number: number
           question_text: string
+          question_text_secondary?: string | null
+          secondary_language?: string | null
         }
         Update: {
           competition_id?: string
           correct_answer?: string
           created_at?: string | null
           explanation?: string | null
+          explanation_secondary?: string | null
           id?: string
           image_url?: string | null
           marks?: number | null
           option_a?: string
+          option_a_secondary?: string | null
           option_b?: string
+          option_b_secondary?: string | null
           option_c?: string
+          option_c_secondary?: string | null
           option_d?: string
+          option_d_secondary?: string | null
           question_number?: number
           question_text?: string
+          question_text_secondary?: string | null
+          secondary_language?: string | null
         }
         Relationships: [
           {
