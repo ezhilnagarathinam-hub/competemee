@@ -39,6 +39,14 @@ export interface Question {
   marks: number;
   explanation: string | null;
   created_at: string;
+  // Optional bilingual pair (English + Tamil or English + Hindi)
+  question_text_secondary?: string | null;
+  option_a_secondary?: string | null;
+  option_b_secondary?: string | null;
+  option_c_secondary?: string | null;
+  option_d_secondary?: string | null;
+  explanation_secondary?: string | null;
+  secondary_language?: 'tamil' | 'hindi' | null;
 }
 
 export interface Student {
