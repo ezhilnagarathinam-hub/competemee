@@ -664,6 +664,8 @@ export default function TestInterface() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {timeExpired && (
         <div className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center">
           <Card className="max-w-md p-8 text-center glass-card border-destructive/50">
             <AlertTriangle className="w-16 h-16 mx-auto text-destructive mb-4" />
