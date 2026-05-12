@@ -441,24 +441,37 @@ export default function Questions() {
       let added = 0;
       for (const q of parsedQs) {
         const nextNumber = questions.length + added + 1;
-        const { error } = await supabase
-          .from('questions')
-          .insert([{
-            competition_id: selectedCompetition,
-            question_number: nextNumber,
-            question_text: q.question_text || '',
-            option_a: q.option_a || '',
-            option_b: q.option_b || '',
-            option_c: q.option_c || '',
-            option_d: q.option_d || '',
-            correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : 'A',
-            marks: defaultMarks,
-            explanation: q.explanation || null,
-          }]);
+        const payload: any = {
+          competition_id: selectedCompetition,
+          question_number: nextNumber,
+          question_text: q.question_text || '',
+          option_a: q.option_a || '',
+          option_b: q.option_b || '',
+          option_c: q.option_c || '',
+          option_d: q.option_d || '',
+          correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : 'A',
+          marks: defaultMarks,
+          explanation: q.explanation || null,
+        };
+        if (q.secondary_language === 'tamil' || q.secondary_language === 'hindi') {
+          payload.secondary_language = q.secondary_language;
+          payload.question_text_secondary = q.question_text_secondary || null;
+          payload.option_a_secondary = q.option_a_secondary || null;
+          payload.option_b_secondary = q.option_b_secondary || null;
+          payload.option_c_secondary = q.option_c_secondary || null;
+          payload.option_d_secondary = q.option_d_secondary || null;
+          payload.explanation_secondary = q.explanation_secondary || null;
+        }
+        const { error } = await supabase.from('questions').insert([payload]);
         if (!error) added++;
       }
 
-      toast.success(`Imported ${added} of ${parsedQs.length} questions!`);
+      const bilingualCount = parsedQs.filter((q: any) => q.secondary_language === 'tamil' || q.secondary_language === 'hindi').length;
+      toast.success(
+        bilingualCount > 0
+          ? `Imported ${added} of ${parsedQs.length} questions (${bilingualCount} bilingual)!`
+          : `Imported ${added} of ${parsedQs.length} questions!`
+      );
       setBulkText('');
       setBulkDialogOpen(false);
       fetchQuestions(selectedCompetition);
