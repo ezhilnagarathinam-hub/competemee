@@ -1108,7 +1108,13 @@ export default function Questions() {
                     </Button>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-foreground mb-3 whitespace-pre-wrap">{q.question_text}</p>
+                    <p className="font-medium text-foreground mb-2 whitespace-pre-wrap">{q.question_text}</p>
+                    {q.secondary_language && q.question_text_secondary && (
+                      <div className="mb-3 pl-3 border-l-2 border-accent/40">
+                        <span className="text-[10px] uppercase tracking-wider text-accent font-bold">{q.secondary_language}</span>
+                        <p className="text-foreground/90 whitespace-pre-wrap">{q.question_text_secondary}</p>
+                      </div>
+                    )}
                     {q.image_url && (
                       <img 
                         src={q.image_url} 
@@ -1119,7 +1125,9 @@ export default function Questions() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {['A', 'B', 'C', 'D'].map((opt) => {
                         const optionKey = `option_${opt.toLowerCase()}` as keyof Question;
+                        const secKey = `option_${opt.toLowerCase()}_secondary` as keyof Question;
                         const isCorrect = q.correct_answer === opt;
+                        const sec = q[secKey] as string | null | undefined;
                         return (
                           <div 
                             key={opt}
@@ -1127,6 +1135,9 @@ export default function Questions() {
                           >
                             <span className="font-bold">{opt}.</span> {q[optionKey] as string}
                             {isCorrect && <span className="ml-2 font-bold">✓</span>}
+                            {sec && (
+                              <div className="mt-1 text-xs opacity-80">{sec}</div>
+                            )}
                           </div>
                         );
                       })}
