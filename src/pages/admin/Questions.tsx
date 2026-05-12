@@ -441,24 +441,37 @@ export default function Questions() {
       let added = 0;
       for (const q of parsedQs) {
         const nextNumber = questions.length + added + 1;
-        const { error } = await supabase
-          .from('questions')
-          .insert([{
-            competition_id: selectedCompetition,
-            question_number: nextNumber,
-            question_text: q.question_text || '',
-            option_a: q.option_a || '',
-            option_b: q.option_b || '',
-            option_c: q.option_c || '',
-            option_d: q.option_d || '',
-            correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : 'A',
-            marks: defaultMarks,
-            explanation: q.explanation || null,
-          }]);
+        const payload: any = {
+          competition_id: selectedCompetition,
+          question_number: nextNumber,
+          question_text: q.question_text || '',
+          option_a: q.option_a || '',
+          option_b: q.option_b || '',
+          option_c: q.option_c || '',
+          option_d: q.option_d || '',
+          correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : 'A',
+          marks: defaultMarks,
+          explanation: q.explanation || null,
+        };
+        if (q.secondary_language === 'tamil' || q.secondary_language === 'hindi') {
+          payload.secondary_language = q.secondary_language;
+          payload.question_text_secondary = q.question_text_secondary || null;
+          payload.option_a_secondary = q.option_a_secondary || null;
+          payload.option_b_secondary = q.option_b_secondary || null;
+          payload.option_c_secondary = q.option_c_secondary || null;
+          payload.option_d_secondary = q.option_d_secondary || null;
+          payload.explanation_secondary = q.explanation_secondary || null;
+        }
+        const { error } = await supabase.from('questions').insert([payload]);
         if (!error) added++;
       }
 
-      toast.success(`Imported ${added} of ${parsedQs.length} questions!`);
+      const bilingualCount = parsedQs.filter((q: any) => q.secondary_language === 'tamil' || q.secondary_language === 'hindi').length;
+      toast.success(
+        bilingualCount > 0
+          ? `Imported ${added} of ${parsedQs.length} questions (${bilingualCount} bilingual)!`
+          : `Imported ${added} of ${parsedQs.length} questions!`
+      );
       setBulkText('');
       setBulkDialogOpen(false);
       fetchQuestions(selectedCompetition);
@@ -1095,7 +1108,13 @@ export default function Questions() {
                     </Button>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-foreground mb-3 whitespace-pre-wrap">{q.question_text}</p>
+                    <p className="font-medium text-foreground mb-2 whitespace-pre-wrap">{q.question_text}</p>
+                    {q.secondary_language && q.question_text_secondary && (
+                      <div className="mb-3 pl-3 border-l-2 border-accent/40">
+                        <span className="text-[10px] uppercase tracking-wider text-accent font-bold">{q.secondary_language}</span>
+                        <p className="text-foreground/90 whitespace-pre-wrap">{q.question_text_secondary}</p>
+                      </div>
+                    )}
                     {q.image_url && (
                       <img 
                         src={q.image_url} 
@@ -1106,7 +1125,9 @@ export default function Questions() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {['A', 'B', 'C', 'D'].map((opt) => {
                         const optionKey = `option_${opt.toLowerCase()}` as keyof Question;
+                        const secKey = `option_${opt.toLowerCase()}_secondary` as keyof Question;
                         const isCorrect = q.correct_answer === opt;
+                        const sec = q[secKey] as string | null | undefined;
                         return (
                           <div 
                             key={opt}
@@ -1114,6 +1135,9 @@ export default function Questions() {
                           >
                             <span className="font-bold">{opt}.</span> {q[optionKey] as string}
                             {isCorrect && <span className="ml-2 font-bold">✓</span>}
+                            {sec && (
+                              <div className="mt-1 text-xs opacity-80">{sec}</div>
+                            )}
                           </div>
                         );
                       })}

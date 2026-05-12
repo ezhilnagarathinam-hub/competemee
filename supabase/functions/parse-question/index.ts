@@ -47,6 +47,12 @@ CRITICAL — STRIP ALL NUMBERING:
 - Do NOT remove numbering that is part of the actual question content (e.g. statement numerals "I.", "II.", "1.", "2." inside multi-statement questions, or numbers inside a sentence like "In 1947, ..."). Only strip the OUTER question/passage index.
 - Trim leading/trailing whitespace after stripping.
 
+BILINGUAL: If the SAME question is given in TWO languages (English+Tamil OR English+Hindi):
+- Put the English version in question_text + option_a..d (and explanation).
+- Put the OTHER language version in question_text_secondary + option_a_secondary..d_secondary (and explanation_secondary).
+- Set secondary_language to "tamil" or "hindi".
+- Otherwise leave secondary_language as "" and omit the secondary fields.
+
 Return a JSON object with this exact structure:
 {
   "question_text": "The full question text including any passage/case, assertion/reason, and statements",
@@ -55,7 +61,14 @@ Return a JSON object with this exact structure:
   "option_c": "Third option text only", 
   "option_d": "Fourth option text only",
   "correct_answer": "A" or "B" or "C" or "D" or null if not found,
-  "explanation": "The explanation text" or null if not found
+  "explanation": "The explanation text" or null if not found,
+  "question_text_secondary": "Second-language version of the question (or null)",
+  "option_a_secondary": "...",
+  "option_b_secondary": "...",
+  "option_c_secondary": "...",
+  "option_d_secondary": "...",
+  "explanation_secondary": "...",
+  "secondary_language": "tamil" or "hindi" or ""
 }
 
 Return ONLY the JSON object, no other text.

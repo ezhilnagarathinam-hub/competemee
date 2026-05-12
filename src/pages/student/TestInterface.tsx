@@ -25,6 +25,8 @@ export default function TestInterface() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [statusId, setStatusId] = useState<string | null>(null);
+  const [languageMode, setLanguageMode] = useState<'primary' | 'secondary' | 'both'>('both');
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const answersRef = useRef<Map<string, StudentAnswer>>(new Map());
@@ -253,6 +255,17 @@ export default function TestInterface() {
 
           setTimeLeft(Math.max(0, remaining));
         }
+
+        // Restore / ask language preference if bilingual
+        const hasBilingual = ((qs as Question[]) || []).some(q => q.secondary_language && q.question_text_secondary);
+        if (hasBilingual) {
+          const saved = localStorage.getItem(`langMode:${competitionId}`);
+          if (saved === 'primary' || saved === 'secondary' || saved === 'both') {
+            setLanguageMode(saved);
+          } else {
+            setLanguageDialogOpen(true);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching test data:', error);
@@ -370,10 +383,29 @@ export default function TestInterface() {
 
       setHasStarted(true);
       setReadyDialogOpen(false);
+
+      // If this paper has bilingual questions, ask the student which language to view
+      const hasBilingual = questions.some(q => q.secondary_language && q.question_text_secondary);
+      if (hasBilingual) {
+        const saved = localStorage.getItem(`langMode:${competitionId}`);
+        if (saved === 'primary' || saved === 'secondary' || saved === 'both') {
+          setLanguageMode(saved);
+        } else {
+          setLanguageDialogOpen(true);
+        }
+      }
     } catch (error) {
       console.error('Error starting test:', error);
       toast.error('Failed to start test');
     }
+  };
+
+  const chooseLanguage = (mode: 'primary' | 'secondary' | 'both') => {
+    setLanguageMode(mode);
+    if (competitionId) {
+      try { localStorage.setItem(`langMode:${competitionId}`, mode); } catch { /* ignore */ }
+    }
+    setLanguageDialogOpen(false);
   };
 
   const saveAnswer = useCallback(async (questionId: string, answer: 'A' | 'B' | 'C' | 'D' | null, isReview: boolean) => {
@@ -539,6 +571,19 @@ export default function TestInterface() {
   const currentAnswer = answers.get(currentQuestion.id);
   const isLastQuestion = currentIndex === questions.length - 1;
 
+  // Detect a bilingual paper (any question has secondary fields)
+  const secondaryLanguage = (questions.find(q => q.secondary_language && q.question_text_secondary)?.secondary_language) || null;
+  const isBilingual = !!secondaryLanguage;
+  const secondaryLabel = secondaryLanguage === 'tamil' ? 'Tamil' : secondaryLanguage === 'hindi' ? 'Hindi' : 'Secondary';
+
+  const showPrimary = !isBilingual || languageMode === 'primary' || languageMode === 'both';
+  const showSecondary = isBilingual && (languageMode === 'secondary' || languageMode === 'both');
+
+  const qText = currentQuestion.question_text;
+  const qTextSec = currentQuestion.question_text_secondary;
+  const optText = (opt: 'A' | 'B' | 'C' | 'D') => currentQuestion[`option_${opt.toLowerCase()}` as keyof Question] as string;
+  const optTextSec = (opt: 'A' | 'B' | 'C' | 'D') => currentQuestion[`option_${opt.toLowerCase()}_secondary` as keyof Question] as string | null | undefined;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Ready Dialog */}
@@ -603,6 +648,23 @@ export default function TestInterface() {
         </DialogContent>
       </Dialog>
 
+      {/* Language Picker Dialog (bilingual papers only) */}
+      <Dialog open={languageDialogOpen} onOpenChange={setLanguageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose your language</DialogTitle>
+            <DialogDescription>
+              This question paper is available in <strong>English</strong> and <strong>{secondaryLabel}</strong>. Pick how you want to read the questions. You can change this anytime from the top bar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 mt-2">
+            <Button variant="outline" onClick={() => chooseLanguage('primary')}>English only</Button>
+            <Button variant="outline" onClick={() => chooseLanguage('secondary')}>{secondaryLabel} only</Button>
+            <Button className="gradient-primary text-primary-foreground" onClick={() => chooseLanguage('both')}>Show both languages</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {timeExpired && (
         <div className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center">
           <Card className="max-w-md p-8 text-center glass-card border-destructive/50">
@@ -624,16 +686,29 @@ export default function TestInterface() {
             className="sticky top-0 z-50 border-b py-3 px-4"
             style={{ backgroundColor: competition.primary_color }}
           >
-            <div className="container mx-auto flex items-center justify-between">
+            <div className="container mx-auto flex items-center justify-between gap-3">
               <div className="text-primary-foreground">
                 <h1 className="font-bold text-lg font-display uppercase tracking-wider">
                   <span className="text-primary-foreground/70">COMPETE</span> ME | {competition.name}
                 </h1>
                 <p className="text-sm opacity-90">Question {currentIndex + 1} of {questions.length}</p>
               </div>
-              <div className={`timer-display px-4 py-2 rounded-xl ${timeLeft <= 60 ? 'bg-destructive text-destructive-foreground animate-pulse' : 'bg-card text-foreground'}`}>
-                <Clock className="w-5 h-5 inline-block mr-2" />
-                {formatTime(timeLeft)}
+              <div className="flex items-center gap-2">
+                {isBilingual && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setLanguageDialogOpen(true)}
+                    className="bg-card/90 hover:bg-card"
+                  >
+                    🌐 {languageMode === 'primary' ? 'English' : languageMode === 'secondary' ? secondaryLabel : `English + ${secondaryLabel}`}
+                  </Button>
+                )}
+                <div className={`timer-display px-4 py-2 rounded-xl ${timeLeft <= 60 ? 'bg-destructive text-destructive-foreground animate-pulse' : 'bg-card text-foreground'}`}>
+                  <Clock className="w-5 h-5 inline-block mr-2" />
+                  {formatTime(timeLeft)}
+                </div>
               </div>
             </div>
           </header>
@@ -654,7 +729,12 @@ export default function TestInterface() {
                           {currentQuestion.marks} mark{currentQuestion.marks > 1 ? 's' : ''}
                         </span>
                       </div>
-                      <p className="text-lg text-foreground">{currentQuestion.question_text}</p>
+                      {showPrimary && (
+                        <p className="text-lg text-foreground whitespace-pre-wrap">{qText}</p>
+                      )}
+                      {showSecondary && qTextSec && (
+                        <p className={`text-lg text-foreground whitespace-pre-wrap ${showPrimary ? 'mt-3 pt-3 border-t border-border/50' : ''}`}>{qTextSec}</p>
+                      )}
                       {currentQuestion.image_url && (
                         <img 
                           src={currentQuestion.image_url} 
@@ -667,23 +747,29 @@ export default function TestInterface() {
                     {/* Options */}
                     <div className="space-y-3">
                       {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-                        const optionKey = `option_${opt.toLowerCase()}` as keyof Question;
                         const isSelected = currentAnswer?.selected_answer === opt;
-                        
+                        const primaryText = optText(opt);
+                        const secText = optTextSec(opt);
+
                         return (
                           <button
                             key={opt}
                             onClick={() => handleSelectAnswer(opt)}
                             className={`question-option w-full text-left ${isSelected ? 'selected' : ''}`}
                           >
-                            <div className="flex items-center gap-4">
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                            <div className="flex items-start gap-4">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-medium flex-shrink-0 ${
                                 isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                               }`}>
                                 {opt}
                               </span>
-                              <span className="flex-1">{currentQuestion[optionKey] as string}</span>
-                              {isSelected && <Check className="w-5 h-5 text-primary" />}
+                              <span className="flex-1">
+                                {showPrimary && <span className="block">{primaryText}</span>}
+                                {showSecondary && secText && (
+                                  <span className={`block ${showPrimary ? 'mt-1 text-sm opacity-80' : ''}`}>{secText}</span>
+                                )}
+                              </span>
+                              {isSelected && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
                             </div>
                           </button>
                         );
