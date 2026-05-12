@@ -648,7 +648,22 @@ export default function TestInterface() {
         </DialogContent>
       </Dialog>
 
-      {timeExpired && (
+      {/* Language Picker Dialog (bilingual papers only) */}
+      <Dialog open={languageDialogOpen} onOpenChange={setLanguageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose your language</DialogTitle>
+            <DialogDescription>
+              This question paper is available in <strong>English</strong> and <strong>{secondaryLabel}</strong>. Pick how you want to read the questions. You can change this anytime from the top bar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 mt-2">
+            <Button variant="outline" onClick={() => chooseLanguage('primary')}>English only</Button>
+            <Button variant="outline" onClick={() => chooseLanguage('secondary')}>{secondaryLabel} only</Button>
+            <Button className="gradient-primary text-primary-foreground" onClick={() => chooseLanguage('both')}>Show both languages</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
         <div className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center">
           <Card className="max-w-md p-8 text-center glass-card border-destructive/50">
             <AlertTriangle className="w-16 h-16 mx-auto text-destructive mb-4" />
