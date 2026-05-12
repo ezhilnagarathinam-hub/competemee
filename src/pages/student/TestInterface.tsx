@@ -255,6 +255,17 @@ export default function TestInterface() {
 
           setTimeLeft(Math.max(0, remaining));
         }
+
+        // Restore / ask language preference if bilingual
+        const hasBilingual = ((qs as Question[]) || []).some(q => q.secondary_language && q.question_text_secondary);
+        if (hasBilingual) {
+          const saved = localStorage.getItem(`langMode:${competitionId}`);
+          if (saved === 'primary' || saved === 'secondary' || saved === 'both') {
+            setLanguageMode(saved);
+          } else {
+            setLanguageDialogOpen(true);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching test data:', error);
