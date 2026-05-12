@@ -669,16 +669,29 @@ export default function TestInterface() {
             className="sticky top-0 z-50 border-b py-3 px-4"
             style={{ backgroundColor: competition.primary_color }}
           >
-            <div className="container mx-auto flex items-center justify-between">
+            <div className="container mx-auto flex items-center justify-between gap-3">
               <div className="text-primary-foreground">
                 <h1 className="font-bold text-lg font-display uppercase tracking-wider">
                   <span className="text-primary-foreground/70">COMPETE</span> ME | {competition.name}
                 </h1>
                 <p className="text-sm opacity-90">Question {currentIndex + 1} of {questions.length}</p>
               </div>
-              <div className={`timer-display px-4 py-2 rounded-xl ${timeLeft <= 60 ? 'bg-destructive text-destructive-foreground animate-pulse' : 'bg-card text-foreground'}`}>
-                <Clock className="w-5 h-5 inline-block mr-2" />
-                {formatTime(timeLeft)}
+              <div className="flex items-center gap-2">
+                {isBilingual && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setLanguageDialogOpen(true)}
+                    className="bg-card/90 hover:bg-card"
+                  >
+                    🌐 {languageMode === 'primary' ? 'English' : languageMode === 'secondary' ? secondaryLabel : `English + ${secondaryLabel}`}
+                  </Button>
+                )}
+                <div className={`timer-display px-4 py-2 rounded-xl ${timeLeft <= 60 ? 'bg-destructive text-destructive-foreground animate-pulse' : 'bg-card text-foreground'}`}>
+                  <Clock className="w-5 h-5 inline-block mr-2" />
+                  {formatTime(timeLeft)}
+                </div>
               </div>
             </div>
           </header>
@@ -699,7 +712,12 @@ export default function TestInterface() {
                           {currentQuestion.marks} mark{currentQuestion.marks > 1 ? 's' : ''}
                         </span>
                       </div>
-                      <p className="text-lg text-foreground">{currentQuestion.question_text}</p>
+                      {showPrimary && (
+                        <p className="text-lg text-foreground whitespace-pre-wrap">{qText}</p>
+                      )}
+                      {showSecondary && qTextSec && (
+                        <p className={`text-lg text-foreground whitespace-pre-wrap ${showPrimary ? 'mt-3 pt-3 border-t border-border/50' : ''}`}>{qTextSec}</p>
+                      )}
                       {currentQuestion.image_url && (
                         <img 
                           src={currentQuestion.image_url} 
@@ -712,23 +730,29 @@ export default function TestInterface() {
                     {/* Options */}
                     <div className="space-y-3">
                       {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-                        const optionKey = `option_${opt.toLowerCase()}` as keyof Question;
                         const isSelected = currentAnswer?.selected_answer === opt;
-                        
+                        const primaryText = optText(opt);
+                        const secText = optTextSec(opt);
+
                         return (
                           <button
                             key={opt}
                             onClick={() => handleSelectAnswer(opt)}
                             className={`question-option w-full text-left ${isSelected ? 'selected' : ''}`}
                           >
-                            <div className="flex items-center gap-4">
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                            <div className="flex items-start gap-4">
+                              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-medium flex-shrink-0 ${
                                 isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                               }`}>
                                 {opt}
                               </span>
-                              <span className="flex-1">{currentQuestion[optionKey] as string}</span>
-                              {isSelected && <Check className="w-5 h-5 text-primary" />}
+                              <span className="flex-1">
+                                {showPrimary && <span className="block">{primaryText}</span>}
+                                {showSecondary && secText && (
+                                  <span className={`block ${showPrimary ? 'mt-1 text-sm opacity-80' : ''}`}>{secText}</span>
+                                )}
+                              </span>
+                              {isSelected && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
                             </div>
                           </button>
                         );
