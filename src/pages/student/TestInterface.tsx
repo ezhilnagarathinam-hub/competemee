@@ -25,6 +25,8 @@ export default function TestInterface() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [statusId, setStatusId] = useState<string | null>(null);
+  const [languageMode, setLanguageMode] = useState<'primary' | 'secondary' | 'both'>('both');
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const answersRef = useRef<Map<string, StudentAnswer>>(new Map());
