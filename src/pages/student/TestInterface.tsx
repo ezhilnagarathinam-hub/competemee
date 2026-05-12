@@ -541,6 +541,19 @@ export default function TestInterface() {
   const currentAnswer = answers.get(currentQuestion.id);
   const isLastQuestion = currentIndex === questions.length - 1;
 
+  // Detect a bilingual paper (any question has secondary fields)
+  const secondaryLanguage = (questions.find(q => q.secondary_language && q.question_text_secondary)?.secondary_language) || null;
+  const isBilingual = !!secondaryLanguage;
+  const secondaryLabel = secondaryLanguage === 'tamil' ? 'Tamil' : secondaryLanguage === 'hindi' ? 'Hindi' : 'Secondary';
+
+  const showPrimary = !isBilingual || languageMode === 'primary' || languageMode === 'both';
+  const showSecondary = isBilingual && (languageMode === 'secondary' || languageMode === 'both');
+
+  const qText = currentQuestion.question_text;
+  const qTextSec = currentQuestion.question_text_secondary;
+  const optText = (opt: 'A' | 'B' | 'C' | 'D') => currentQuestion[`option_${opt.toLowerCase()}` as keyof Question] as string;
+  const optTextSec = (opt: 'A' | 'B' | 'C' | 'D') => currentQuestion[`option_${opt.toLowerCase()}_secondary` as keyof Question] as string | null | undefined;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Ready Dialog */}
