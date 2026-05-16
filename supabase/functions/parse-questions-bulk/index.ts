@@ -77,11 +77,15 @@ Deno.serve(async (req) => {
 
     const results: any[][] = [];
     for (const chunk of chunks) {
-      // Run sequentially to stay well under rate limits and avoid model load
-      // shedding which produces malformed output.
       // eslint-disable-next-line no-await-in-loop
       const parsed = await parseChunk(chunk, apiKey);
-      results.push(parsed);
+      if (parsed && (parsed as any).__error) {
+        return new Response(JSON.stringify({ error: (parsed as any).__error }), {
+          status: (parsed as any).__status || 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      results.push(parsed as any[]);
     }
 
     let questions = results.flat();
@@ -285,9 +289,14 @@ ${text}`;
     });
 
     if (!response.ok) {
-      console.error('AI Gateway error in chunk:', response.status, await response.text());
-      // Retry once without strict schema — some responses occasionally fail
-      // schema validation while still being valid JSON.
+      const errText = await response.text();
+      console.error('AI Gateway error in chunk:', response.status, errText);
+      if (response.status === 402) {
+        return { __error: 'AI credits exhausted. Please add credits in Lovable Cloud settings.', __status: 402 } as any;
+      }
+      if (response.status === 429) {
+        return { __error: 'Rate limit reached. Please wait a moment and try again.', __status: 429 } as any;
+      }
       return await parseChunkFallback(text, apiKey);
     }
 
