@@ -77,11 +77,15 @@ Deno.serve(async (req) => {
 
     const results: any[][] = [];
     for (const chunk of chunks) {
-      // Run sequentially to stay well under rate limits and avoid model load
-      // shedding which produces malformed output.
       // eslint-disable-next-line no-await-in-loop
       const parsed = await parseChunk(chunk, apiKey);
-      results.push(parsed);
+      if (parsed && (parsed as any).__error) {
+        return new Response(JSON.stringify({ error: (parsed as any).__error }), {
+          status: (parsed as any).__status || 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      results.push(parsed as any[]);
     }
 
     let questions = results.flat();
