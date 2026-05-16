@@ -289,9 +289,14 @@ ${text}`;
     });
 
     if (!response.ok) {
-      console.error('AI Gateway error in chunk:', response.status, await response.text());
-      // Retry once without strict schema — some responses occasionally fail
-      // schema validation while still being valid JSON.
+      const errText = await response.text();
+      console.error('AI Gateway error in chunk:', response.status, errText);
+      if (response.status === 402) {
+        return { __error: 'AI credits exhausted. Please add credits in Lovable Cloud settings.', __status: 402 } as any;
+      }
+      if (response.status === 429) {
+        return { __error: 'Rate limit reached. Please wait a moment and try again.', __status: 429 } as any;
+      }
       return await parseChunkFallback(text, apiKey);
     }
 
