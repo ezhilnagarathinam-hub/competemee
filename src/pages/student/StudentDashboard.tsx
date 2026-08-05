@@ -445,79 +445,46 @@ function CountdownTimer({ comp }: { comp: CompetitionWithStatus }) {
 
 
 function StudentResults() {
-  const { studentId } = useStudentAuth();
+  const { studentId, studentName } = useStudentAuth();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedResult, setSelectedResult] = useState<any>(null);
-  const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
+  const [detailRows, setDetailRows] = useState<any[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   const fetchResults = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('student_competitions')
-        .select(`
-          *,
-          competitions!inner(*)
-        `)
+      // Authoritative, server-computed results (also covers attempts that ran out of time)
+      const { data: reports, error } = await (supabase as any)
+        .from('competition_result_reports')
+        .select('*')
         .eq('student_id', studentId)
-        .or('has_submitted.eq.true,and(is_locked.eq.true,submitted_at.not.is.null)');
+        .eq('is_finalized', true)
+        .order('submitted_at', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
 
-      // Fetch per-question marks + correctness to compute negative-marking breakdown
-      const compIds = (data || []).map((r: any) => r.competition_id);
-      let breakdownByComp = new Map<string, { correct: number; negative: number; max: number }>();
+      const compIds = Array.from(new Set((reports || []).map((r: any) => r.competition_id)));
+      let compMap = new Map<string, any>();
 
       if (compIds.length > 0) {
-        const [{ data: ans }, { data: qs }] = await Promise.all([
-          supabase
-            .from('student_answers')
-            .select('competition_id, question_id, is_correct, selected_answer')
-            .eq('student_id', studentId)
-            .in('competition_id', compIds),
-          supabase
-            .from('questions')
-            .select('id, marks, competition_id')
-            .in('competition_id', compIds),
-        ]);
-
-        const qMarks = new Map<string, number>();
-        const maxByComp = new Map<string, number>();
-        (qs || []).forEach((q: any) => {
-          qMarks.set(q.id, q.marks || 0);
-          maxByComp.set(q.competition_id, (maxByComp.get(q.competition_id) || 0) + (q.marks || 0));
-        });
-
-        (ans || []).forEach((a: any) => {
-          if (!a.selected_answer) return;
-          const m = qMarks.get(a.question_id) || 0;
-          const cur = breakdownByComp.get(a.competition_id) || { correct: 0, negative: 0, max: 0 };
-          if (a.is_correct) cur.correct += m;
-          else cur.negative += m / 3;
-          breakdownByComp.set(a.competition_id, cur);
-        });
-
-        // attach max
-        maxByComp.forEach((max, cid) => {
-          const cur = breakdownByComp.get(cid) || { correct: 0, negative: 0, max: 0 };
-          cur.max = max;
-          breakdownByComp.set(cid, cur);
-        });
+        const { data: comps } = await supabase
+          .from('competitions')
+          .select('*')
+          .in('id', compIds as string[]);
+        (comps || []).forEach((c: any) => compMap.set(c.id, c));
       }
 
-      const enriched = (data || []).map((r: any) => {
-        const b = breakdownByComp.get(r.competition_id) || { correct: 0, negative: 0, max: 0 };
-        return {
+      setResults(
+        (reports || []).map((r: any) => ({
           ...r,
-          correct_marks: Math.round(b.correct * 100) / 100,
-          negative_marks: Math.round(b.negative * 100) / 100,
-          computed_total: Math.round((b.correct - b.negative) * 100) / 100,
-          max_marks: b.max,
-        };
-      });
-
-      setResults(enriched);
+          competitions: compMap.get(r.competition_id) || { name: r.competition_name },
+          correct_marks: Math.round((Number(r.correct_marks) || 0) * 100) / 100,
+          negative_marks: Math.round((Number(r.negative_marks) || 0) * 100) / 100,
+          computed_total: Math.round((Number(r.total_marks) || 0) * 100) / 100,
+          max_marks: Math.round((Number(r.max_marks) || 0) * 100) / 100,
+        })),
+      );
     } catch (error) {
       console.error('Error fetching results:', error);
     } finally {
@@ -529,35 +496,66 @@ function StudentResults() {
     if (!studentId) return;
 
     fetchResults();
-    const interval = setInterval(fetchResults, 5000);
+    const interval = setInterval(fetchResults, 10000);
     return () => clearInterval(interval);
   }, [studentId, fetchResults]);
+
+  /** Load every question of the paper plus this student's answers (unanswered included). */
+  const loadDetail = useCallback(async (result: any) => {
+    const [{ data: questions, error: qErr }, { data: answers, error: aErr }] = await Promise.all([
+      supabase
+        .from('questions')
+        .select('*')
+        .eq('competition_id', result.competition_id)
+        .order('question_number'),
+      supabase
+        .from('student_answers')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('competition_id', result.competition_id),
+    ]);
+
+    if (qErr) throw qErr;
+    if (aErr) throw aErr;
+
+    const answerMap = new Map<string, any>();
+    (answers || []).forEach((a: any) => answerMap.set(a.question_id, a));
+    return buildResultRows(questions || [], answerMap);
+  }, [studentId]);
 
   async function viewDetails(result: any) {
     setSelectedResult(result);
     setDetailsLoading(true);
-    
     try {
-      const { data: answers, error } = await supabase
-        .from('student_answers')
-        .select(`
-          *,
-          questions!inner(*)
-        `)
-        .eq('student_id', studentId)
-        .eq('competition_id', result.competition_id);
-
-      if (error) throw error;
-      
-      const sorted = (answers || []).sort((a: any, b: any) => 
-        (a.questions?.question_number || 0) - (b.questions?.question_number || 0)
-      );
-      setDetailedAnswers(sorted);
+      const { rows } = await loadDetail(result);
+      setDetailRows(rows);
     } catch (error) {
       console.error('Error fetching details:', error);
-      toast.error('Failed to load details');
+      toast.error('Failed to load answers');
     } finally {
       setDetailsLoading(false);
+    }
+  }
+
+  async function download(result: any) {
+    try {
+      toast.loading('Preparing your result…', { id: 'result-pdf' });
+      const { rows, correctMarks, negativeMarks, maxMarks } = await loadDetail(result);
+      downloadResultPDF({
+        studentName: studentName || 'Player',
+        competitionName: result.competitions?.name || result.competition_name || 'Competition',
+        startedAt: result.started_at,
+        submittedAt: result.submitted_at,
+        totalMarks: Math.round((correctMarks - negativeMarks) * 100) / 100,
+        maxMarks,
+        correctMarks,
+        negativeMarks,
+        rows,
+      });
+      toast.success('Result downloaded', { id: 'result-pdf' });
+    } catch (error) {
+      console.error('Result download failed:', error);
+      toast.error('Could not generate the result PDF', { id: 'result-pdf' });
     }
   }
 
@@ -582,12 +580,12 @@ function StudentResults() {
           const showDetails = comp?.show_detailed_results;
 
           return (
-            <div 
-              key={result.id}
+            <div
+              key={result.competition_id}
               className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all"
             >
               <div className="flex-1">
-                <h4 className="font-bold text-foreground font-display">{comp?.name || 'Unknown'}</h4>
+                <h4 className="font-bold text-foreground font-display">{comp?.name || result.competition_name || 'Unknown'}</h4>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                   <div className="px-2 py-1 rounded-md bg-background/60 border border-border/40">
                     <span className="text-muted-foreground">Started: </span>
@@ -603,7 +601,7 @@ function StudentResults() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 {showResult ? (
                   <>
                     <div className="text-right">
@@ -620,15 +618,26 @@ function StudentResults() {
                       </div>
                     </div>
                     {showDetails && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => viewDetails(result)}
-                        className="border-accent/50 text-accent hover:bg-accent/10"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Answers
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewDetails(result)}
+                          className="border-accent/50 text-accent hover:bg-accent/10"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View Answers
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => download(result)}
+                          className="border-primary/50 text-primary hover:bg-primary/10"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Download
+                        </Button>
+                      </>
                     )}
                   </>
                 ) : (
@@ -647,67 +656,88 @@ function StudentResults() {
         <DialogContent className="glass-card max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">
-              ANSWER REVIEW - {selectedResult?.competitions?.name}
+              ANSWER REVIEW - {selectedResult?.competitions?.name || selectedResult?.competition_name}
             </DialogTitle>
           </DialogHeader>
-          
+
           {detailsLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading answers...</div>
           ) : (
             <div className="space-y-4">
-              {detailedAnswers.map((answer) => {
-                const q = answer.questions;
-                if (!q) return null;
-                const isCorrect = answer.is_correct;
-                const selectedAnswer = answer.selected_answer;
-                const correctAnswer = q.correct_answer;
-                
+              {selectedResult && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => download(selectedResult)}
+                  className="border-primary/50 text-primary hover:bg-primary/10"
+                >
+                  <Download className="w-4 h-4 mr-1" /> Download this answer sheet (PDF)
+                </Button>
+              )}
+
+              {detailRows.length === 0 && (
+                <p className="text-center text-muted-foreground py-6">No questions found for this test.</p>
+              )}
+
+              {detailRows.map((row) => {
+                const answered = !!row.selected;
+                const isCorrect = answered && row.selected === row.correct;
+
                 return (
-                  <div 
-                    key={answer.id}
+                  <div
+                    key={row.number}
                     className={`p-4 rounded-xl border-2 ${
-                      isCorrect 
-                        ? 'border-accent/50 bg-accent/10' 
-                        : 'border-destructive/50 bg-destructive/10'
+                      !answered
+                        ? 'border-border bg-muted/20'
+                        : isCorrect
+                          ? 'border-accent/50 bg-accent/10'
+                          : 'border-destructive/50 bg-destructive/10'
                     }`}
                   >
                     <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                        isCorrect ? 'bg-accent text-accent-foreground' : 'bg-destructive text-destructive-foreground'
+                      <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center font-bold text-sm ${
+                        !answered
+                          ? 'bg-muted text-muted-foreground'
+                          : isCorrect
+                            ? 'bg-accent text-accent-foreground'
+                            : 'bg-destructive text-destructive-foreground'
                       }`}>
-                        {q.question_number}
+                        {row.number}
                       </div>
                       <div className="flex-1">
-                        <p className="text-foreground font-medium whitespace-pre-wrap">{q.question_text}</p>
-                        {q.image_url && (
-                          <img src={q.image_url} alt="Question" className="mt-2 max-h-24 rounded-lg" />
+                        <p className="text-foreground font-medium whitespace-pre-wrap">{row.question}</p>
+                        {row.question_secondary && (
+                          <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{row.question_secondary}</p>
                         )}
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-                        isCorrect ? 'bg-accent/20 text-accent' : 'bg-destructive/20 text-destructive'
+                      <div className={`px-3 py-1 rounded-full text-sm font-bold shrink-0 ${
+                        !answered
+                          ? 'bg-muted text-muted-foreground'
+                          : isCorrect
+                            ? 'bg-accent/20 text-accent'
+                            : 'bg-destructive/20 text-destructive'
                       }`}>
-                        {isCorrect ? `+${q.marks}` : '0'}
+                        {!answered ? 'Not answered' : `${row.awarded > 0 ? '+' : ''}${row.awarded}`}
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {['A', 'B', 'C', 'D'].map((opt) => {
-                        const optKey = `option_${opt.toLowerCase()}` as keyof typeof q;
-                        const isThisCorrect = correctAnswer === opt;
-                        const isThisSelected = selectedAnswer === opt;
-                        
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      {(['A', 'B', 'C', 'D'] as const).map((opt) => {
+                        const isThisCorrect = row.correct === opt;
+                        const isThisSelected = row.selected === opt;
+
                         return (
-                          <div 
+                          <div
                             key={opt}
                             className={`p-2 rounded-lg ${
-                              isThisCorrect 
-                                ? 'bg-accent/20 text-accent border border-accent/50' 
-                                : isThisSelected 
-                                  ? 'bg-destructive/20 text-destructive border border-destructive/50' 
+                              isThisCorrect
+                                ? 'bg-accent/20 text-accent border border-accent/50'
+                                : isThisSelected
+                                  ? 'bg-destructive/20 text-destructive border border-destructive/50'
                                   : 'bg-muted/30 text-muted-foreground'
                             }`}
                           >
-                            <span className="font-bold">{opt}.</span> {q[optKey] as string}
+                            <span className="font-bold">{opt}.</span> {row.options[opt]}
                             {isThisCorrect && <span className="ml-2">✓</span>}
                             {isThisSelected && !isThisCorrect && <span className="ml-2">✗</span>}
                           </div>
@@ -715,10 +745,10 @@ function StudentResults() {
                       })}
                     </div>
 
-                    {q.explanation && (
+                    {row.explanation && (
                       <div className="mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 text-sm">
                         <span className="font-bold text-primary">Explanation:</span>{' '}
-                        <span className="text-foreground">{q.explanation}</span>
+                        <span className="text-foreground">{row.explanation}</span>
                       </div>
                     )}
                   </div>
