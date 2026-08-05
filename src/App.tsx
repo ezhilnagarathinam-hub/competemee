@@ -18,11 +18,13 @@ import Students from "./pages/admin/Students";
 import Results from "./pages/admin/Results";
 import Reports from "./pages/admin/Reports";
 import Support from "./pages/admin/Support";
+import Signups from "./pages/admin/Signups";
 import Settings from "./pages/admin/Settings";
 import { AdminLayout } from "./components/admin/AdminLayout";
 
 // Student Pages
 import StudentLogin from "./pages/student/StudentLogin";
+import StudentSignup from "./pages/student/StudentSignup";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import TestInterface from "./pages/student/TestInterface";
 import { StudentLayout } from "./components/student/StudentLayout";
@@ -47,6 +49,7 @@ const App = () => (
             <Route path="competitions/new" element={<Competitions />} />
             <Route path="questions" element={<Questions />} />
             <Route path="students" element={<Students />} />
+            <Route path="signups" element={<Signups />} />
             <Route path="results" element={<Results />} />
             <Route path="reports" element={<Reports />} />
             <Route path="support" element={<Support />} />
@@ -55,6 +58,7 @@ const App = () => (
           
           {/* Student Routes */}
           <Route path="/student/login" element={<StudentLogin />} />
+          <Route path="/student/signup" element={<StudentSignup />} />
           <Route path="/student" element={<StudentLayout />}>
             <Route index element={<StudentDashboard />} />
           </Route>

@@ -10,6 +10,7 @@ import {
   ClipboardList,
   FileBarChart,
   LifeBuoy,
+  UserPlus2,
   Zap,
   Menu,
   X
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/admin/competitions', icon: Trophy, label: 'Competitions' },
   { path: '/admin/questions', icon: FileQuestion, label: 'Questions' },
   { path: '/admin/students', icon: Users, label: 'Students' },
+  { path: '/admin/signups', icon: UserPlus2, label: 'Signup Requests' },
   { path: '/admin/results', icon: ClipboardList, label: 'Results' },
   { path: '/admin/reports', icon: FileBarChart, label: 'Reports' },
   { path: '/admin/support', icon: LifeBuoy, label: 'Support' },
