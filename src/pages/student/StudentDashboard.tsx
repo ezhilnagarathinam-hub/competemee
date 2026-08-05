@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Calendar, Clock, Play, Lock, Zap, Eye, Phone, Timer } from 'lucide-react';
+import { Trophy, Calendar, Clock, Play, Lock, Zap, Eye, Timer, MessageCircle, Download, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +10,11 @@ import { toast } from 'sonner';
 import type { Competition, StudentCompetition } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 import { formatTime12, formatTimestampShort, formatDurationBetween } from '@/lib/timeFormat';
+import { serverNow, syncServerTime, competitionDateTime } from '@/lib/serverTime';
+import { buildResultRows, downloadResultPDF } from '@/lib/exportResult';
+import { Textarea } from '@/components/ui/textarea';
+
+const SUPPORT_WHATSAPP = '919487277924';
 
 interface CompetitionWithStatus extends Competition {
   studentStatus?: StudentCompetition;
@@ -129,6 +134,13 @@ export default function StudentDashboard() {
     }
   }, [studentId, fetchCompetitions]);
 
+  // Keep the clock trusted (server-side), not device-dependent
+  useEffect(() => {
+    void syncServerTime(true);
+    const t = setInterval(() => void syncServerTime(true), 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
   // Poll competitions every 5 seconds so status (submitted/locked) updates promptly
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -145,29 +157,15 @@ export default function StudentDashboard() {
     if (comp.studentStatus?.is_locked) return false;
     if (comp.studentStatus?.has_submitted) return false;
     
-    const now = new Date();
-    const startDate = parseISO(comp.date);
-    const endDate = comp.end_date ? parseISO(comp.end_date) : startDate;
-    
-    const [startH, startM] = comp.start_time.split(':').map(Number);
-    const [endH, endM] = comp.end_time.split(':').map(Number);
-    
-    const windowStart = new Date(startDate);
-    windowStart.setHours(startH, startM, 0, 0);
-    
-    const windowEnd = new Date(endDate);
-    windowEnd.setHours(endH, endM, 0, 0);
-    
+    const now = serverNow();
+    const windowStart = competitionDateTime(comp.date, comp.start_time);
+    const windowEnd = competitionDateTime(comp.end_date || comp.date, comp.end_time);
+
     return now >= windowStart && now <= windowEnd;
   }
 
   function isBeforeStart(comp: CompetitionWithStatus): boolean {
-    const now = new Date();
-    const startDate = parseISO(comp.date);
-    const [startH, startM] = comp.start_time.split(':').map(Number);
-    const windowStart = new Date(startDate);
-    windowStart.setHours(startH, startM, 0, 0);
-    return now < windowStart;
+    return serverNow() < competitionDateTime(comp.date, comp.start_time);
   }
 
   function formatDuration(minutes: number): string {
@@ -185,6 +183,21 @@ export default function StudentDashboard() {
 
   async function handleStartTest(competitionId: string) {
     try {
+      await syncServerTime(true);
+      const comp = competitions.find((c) => c.id === competitionId);
+      if (comp) {
+        const now = serverNow();
+        if (now < competitionDateTime(comp.date, comp.start_time)) {
+          toast.error('This test has not started yet.');
+          return;
+        }
+        if (now > competitionDateTime(comp.end_date || comp.date, comp.end_time)) {
+          toast.error('This test window has closed.');
+          fetchCompetitions();
+          return;
+        }
+      }
+
       const { data: existing } = await supabase
         .from('student_competitions')
         .select('*')
@@ -204,11 +217,14 @@ export default function StudentDashboard() {
           .from('student_competitions')
           .update({
             has_started: true,
-            started_at: new Date().toISOString(),
+            started_at: serverNow().toISOString(),
           })
           .eq('id', existing.id);
-        
-        if (error) throw error;
+
+        if (error) {
+          toast.error(error.message || 'Failed to start test');
+          return;
+        }
       }
 
       navigate(`/student/test/${competitionId}`);
@@ -401,16 +417,9 @@ function CountdownTimer({ comp }: { comp: CompetitionWithStatus }) {
 
   useEffect(() => {
     const tick = () => {
-      const now = new Date();
-      const startDate = parseISO(comp.date);
-      const endDate = comp.end_date ? parseISO(comp.end_date) : startDate;
-      const [startH, startM] = comp.start_time.split(':').map(Number);
-      const [endH, endM] = comp.end_time.split(':').map(Number);
-      
-      const startTime = new Date(startDate);
-      startTime.setHours(startH, startM, 0, 0);
-      const endTime = new Date(endDate);
-      endTime.setHours(endH, endM, 0, 0);
+      const now = serverNow();
+      const startTime = competitionDateTime(comp.date, comp.start_time);
+      const endTime = competitionDateTime(comp.end_date || comp.date, comp.end_time);
 
       if (now < startTime) {
         const diff = Math.floor((startTime.getTime() - now.getTime()) / 1000);

@@ -378,11 +378,59 @@ export type Database = {
           },
         ]
       }
+      student_signup_requests: {
+        Row: {
+          created_at: string
+          exam: string
+          id: string
+          name: string
+          note: string | null
+          phone: string
+          reviewed_at: string | null
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam: string
+          id?: string
+          name: string
+          note?: string | null
+          phone: string
+          reviewed_at?: string | null
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam?: string
+          id?: string
+          name?: string
+          note?: string | null
+          phone?: string
+          reviewed_at?: string | null
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_signup_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           address: string | null
           created_at: string | null
           email: string | null
+          exam: string | null
           id: string
           name: string
           password: string
@@ -395,6 +443,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           email?: string | null
+          exam?: string | null
           id?: string
           name: string
           password: string
@@ -407,6 +456,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           email?: string | null
+          exam?: string | null
           id?: string
           name?: string
           password?: string
@@ -503,6 +553,14 @@ export type Database = {
         Args: { p_competition_id: string; p_student_id: string }
         Returns: number
       }
+      competition_window: {
+        Args: { p_competition_id: string }
+        Returns: {
+          duration_minutes: number
+          window_end: string
+          window_start: string
+        }[]
+      }
       recompute_competition_rankings: {
         Args: { p_competition_id: string }
         Returns: undefined
@@ -511,6 +569,7 @@ export type Database = {
         Args: { p_competition_id: string; p_student_id: string }
         Returns: undefined
       }
+      server_now: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "student"

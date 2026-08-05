@@ -118,6 +118,15 @@ export default function StudentLogin() {
               </Button>
             </form>
 
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              New here?{' '}
+              <Link to="/student/signup" className="font-bold text-primary hover:underline">
+                Create an account
+              </Link>
+            </p>
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              New accounts need admin approval. Credentials are sent to your phone.
+            </p>
           </CardContent>
         </Card>
       </div>

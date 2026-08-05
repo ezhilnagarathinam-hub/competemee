@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock, Search, UserPlus2 } from 'lucide-react';
+import { Plus, Users, Trash2, Edit, Eye, EyeOff, Copy, Trophy, RotateCcw, Lock, Unlock, Search, UserPlus2, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
@@ -533,28 +534,46 @@ export default function Students() {
                   <TableCell className="font-bold">{student.name}</TableCell>
                   <TableCell>{student.phone}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[300px]">
-                      {getCompetitionInfo(student.id).length > 0 ? (
-                        getCompetitionInfo(student.id).map((info, i) => (
-                          <div key={i} className="flex items-center gap-1">
-                            <Badge variant="outline" className={`text-xs ${info.submitted ? 'border-accent/50 text-accent' : info.locked ? 'border-destructive/50 text-destructive' : 'border-primary/50 text-primary'}`}>
-                              {info.name} {info.submitted ? '✓' : info.locked ? '🔒' : ''}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-6 w-6 p-0 ${info.locked ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : 'text-accent hover:text-accent hover:bg-accent/10'}`}
-                              title={info.locked ? 'Click to unlock (allow retake)' : 'Click to lock'}
-                              onClick={() => toggleLock(student.id, info.compId, info.locked)}
-                            >
-                              {info.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                    {(() => {
+                      const assigned = getCompetitionInfo(student.id);
+                      if (assigned.length === 0) {
+                        return <span className="text-xs text-muted-foreground">None</span>;
+                      }
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="border-primary/30 hover:bg-primary/10">
+                              <Trophy className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                              {assigned.length} assigned
+                              <ChevronDown className="w-3.5 h-3.5 ml-1.5 opacity-60" />
                             </Button>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">None</span>
-                      )}
-                    </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
+                            <DropdownMenuLabel className="text-xs uppercase tracking-wide">
+                              Allotted competitions
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {assigned.map((info) => (
+                              <div key={info.compId} className="flex items-center justify-between gap-2 px-2 py-1.5">
+                                <span className="text-sm truncate">
+                                  {info.name}
+                                  {info.submitted ? ' ✓' : ''}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`h-6 w-6 p-0 shrink-0 ${info.locked ? 'text-destructive hover:bg-destructive/10' : 'text-accent hover:bg-accent/10'}`}
+                                  title={info.locked ? 'Click to unlock (allow retake)' : 'Click to lock'}
+                                  onClick={(e) => { e.preventDefault(); toggleLock(student.id, info.compId, info.locked); }}
+                                >
+                                  {info.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                </Button>
+                              </div>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <code className="px-2 py-1 rounded bg-primary/10 text-sm text-primary font-mono">{student.username}</code>
