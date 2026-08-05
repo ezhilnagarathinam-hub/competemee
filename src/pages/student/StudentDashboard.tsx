@@ -26,6 +26,7 @@ export default function StudentDashboard() {
   const [competitions, setCompetitions] = useState<CompetitionWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [contactComp, setContactComp] = useState<{ id: string; name: string } | null>(null);
   const navigate = useNavigate();
 
   const fetchCompetitions = useCallback(async () => {
@@ -316,10 +317,10 @@ export default function StudentDashboard() {
                         ) : (
                           <Button
                             variant="outline"
-                            onClick={() => setContactDialogOpen(true)}
+                            onClick={() => { setContactComp({ id: comp.id, name: comp.name }); setContactDialogOpen(true); }}
                             className="border-primary/30 hover:bg-primary/10"
                           >
-                            <Phone className="w-4 h-4 mr-2" />
+                            <MessageCircle className="w-4 h-4 mr-2" />
                             Enroll Now
                           </Button>
                         )
@@ -369,30 +370,13 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Contact Dialog for non-enrolled students */}
-      <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
-        <DialogContent className="glass-card text-center">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl">ENROLL IN THIS COMPETITION</DialogTitle>
-          </DialogHeader>
-          <div className="py-6 space-y-4">
-            <Phone className="w-16 h-16 mx-auto text-primary" />
-            <p className="text-foreground text-lg">
-              Contact our team to get enrolled into this competition
-            </p>
-            <a 
-              href="tel:9487277924"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl gradient-primary text-primary-foreground font-bold text-lg shadow-primary"
-            >
-              <Phone className="w-5 h-5" />
-              9487277924
-            </a>
-            <p className="text-sm text-muted-foreground">
-              Call or WhatsApp us to register
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Enrollment request dialog - WhatsApp + in-app support message */}
+      <EnrollDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        competitionName={contactComp?.name}
+        competitionId={contactComp?.id}
+      />
 
 
       <Card className="glass-card">
@@ -745,5 +729,100 @@ function StudentResults() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+
+/* Enrollment request: WhatsApp redirect + in-app support message (no phone calls) */
+function EnrollDialog({
+  open,
+  onOpenChange,
+  competitionName,
+  competitionId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  competitionName?: string;
+  competitionId?: string;
+}) {
+  const { studentId, studentName } = useStudentAuth();
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const waText = `Hi, I am ${studentName || 'a player'} on Compete Me. I would like to be enrolled in "${competitionName || 'a competition'}".`;
+  const waLink = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(waText)}`;
+
+  async function sendSupportMessage() {
+    const text = message.trim();
+    if (text.length < 5) {
+      toast.error('Please type your message');
+      return;
+    }
+    setSending(true);
+    try {
+      const { error } = await (supabase as any).from('support_tickets').insert({
+        student_uuid: studentId,
+        student_name: studentName || 'Unknown',
+        test_id: competitionId || null,
+        test_name: competitionName || null,
+        message: `[Enrollment request] ${text}`,
+      });
+      if (error) throw error;
+      toast.success('Request sent to admin');
+      setMessage('');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Support message failed:', error);
+      toast.error('Could not send your request. Please try WhatsApp.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="glass-card">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">REQUEST ENROLLMENT</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 py-2">
+          <p className="text-sm text-muted-foreground">
+            Competitions are allotted by the admin. Send your request below and we will enroll you.
+          </p>
+
+          <a href={waLink} target="_blank" rel="noopener noreferrer" className="block">
+            <Button className="w-full gradient-primary text-primary-foreground shadow-primary h-12">
+              <MessageCircle className="w-5 h-5 mr-2" />
+              Message us on WhatsApp
+            </Button>
+          </a>
+
+          <div className="relative text-center">
+            <span className="relative z-10 px-3 text-xs uppercase tracking-wide text-muted-foreground bg-background">
+              or send a support message
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={`I would like to join "${competitionName || 'this competition'}"...`}
+              maxLength={500}
+              rows={3}
+            />
+            <Button
+              variant="outline"
+              className="w-full border-primary/30"
+              disabled={sending}
+              onClick={sendSupportMessage}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {sending ? 'Sending...' : 'Send to Admin'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
