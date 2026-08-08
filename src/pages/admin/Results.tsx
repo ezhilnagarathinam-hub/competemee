@@ -141,6 +141,7 @@ export default function Results() {
         return {
           student_id: s.student_id,
           student_name: s.student_name || 'Unknown',
+          phone: null as string | null,
           correct_marks: Math.round((Number(s.correct_marks) || 0) * 100) / 100,
           negative_marks: Math.round((Number(s.negative_marks) || 0) * 100) / 100,
           total_marks: Math.round((Number(s.total_marks) || 0) * 100) / 100,
@@ -150,10 +151,23 @@ export default function Results() {
         };
       });
 
+      // Attach phone numbers so results can be shared on WhatsApp
+      if (entries.length > 0) {
+        const { data: phoneRows } = await supabase
+          .from('students')
+          .select('id, phone')
+          .in('id', entries.map((e) => e.student_id));
+        const phoneMap = new Map((phoneRows || []).map((p: any) => [p.id, p.phone]));
+        entries.forEach((e) => {
+          e.phone = phoneMap.get(e.student_id) ?? null;
+        });
+      }
+
       // Sort by total_marks desc
       entries.sort((a, b) => b.total_marks - a.total_marks);
 
       setLeaderboards(prev => ({ ...prev, [compId]: entries }));
+
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     } finally {
