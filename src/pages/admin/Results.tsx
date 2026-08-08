@@ -207,6 +207,21 @@ export default function Results() {
   function renderLeaderboard(compId: string) {
     const entries = leaderboards[compId];
     const max = maxMarks[compId] || 0;
+    const compName = competitions.find((c) => c.id === compId)?.name || 'Competition';
+
+    const shareLink = (entry: LeaderboardEntry, rank: number) =>
+      waLink(
+        entry.phone || '',
+        resultMessage({
+          name: entry.student_name,
+          competitionName: compName,
+          totalMarks: entry.total_marks,
+          maxMarks: max,
+          percentage: safePercentage(entry.total_marks, max),
+          rank,
+        }),
+      );
+
 
     if (loadingComps.has(compId)) {
       return <p className="text-muted-foreground text-center py-6">Loading results...</p>;
