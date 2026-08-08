@@ -291,6 +291,8 @@ export default function Results() {
                 <TableHead>Started</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Time Taken</TableHead>
+                <TableHead className="text-right">Share</TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody>
