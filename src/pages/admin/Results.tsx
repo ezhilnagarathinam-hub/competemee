@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, Zap, Users } from 'lucide-react';
+import { Trophy, Medal, Award, Zap, Users, MessageCircle } from 'lucide-react';
+import { waLink, resultMessage } from '@/lib/whatsapp';
+
 import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
