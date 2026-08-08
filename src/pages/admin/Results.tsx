@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal, Award, Zap, Users } from 'lucide-react';
+import { Trophy, Medal, Award, Zap, Users, MessageCircle } from 'lucide-react';
+import { waLink, resultMessage } from '@/lib/whatsapp';
+
 import { DownloadMenu } from '@/components/admin/DownloadMenu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +15,7 @@ import type { Competition } from '@/types/database';
 interface LeaderboardEntry {
   student_id: string;
   student_name: string;
+  phone: string | null;
   correct_marks: number;
   negative_marks: number;
   total_marks: number;
@@ -20,6 +23,7 @@ interface LeaderboardEntry {
   submitted_at: string | null;
   isLate?: boolean;
 }
+
 
 interface CompetitionWithCount extends Competition {
   submission_count: number;
@@ -139,6 +143,7 @@ export default function Results() {
         return {
           student_id: s.student_id,
           student_name: s.student_name || 'Unknown',
+          phone: null as string | null,
           correct_marks: Math.round((Number(s.correct_marks) || 0) * 100) / 100,
           negative_marks: Math.round((Number(s.negative_marks) || 0) * 100) / 100,
           total_marks: Math.round((Number(s.total_marks) || 0) * 100) / 100,
@@ -148,10 +153,23 @@ export default function Results() {
         };
       });
 
+      // Attach phone numbers so results can be shared on WhatsApp
+      if (entries.length > 0) {
+        const { data: phoneRows } = await supabase
+          .from('students')
+          .select('id, phone')
+          .in('id', entries.map((e) => e.student_id));
+        const phoneMap = new Map((phoneRows || []).map((p: any) => [p.id, p.phone]));
+        entries.forEach((e) => {
+          e.phone = phoneMap.get(e.student_id) ?? null;
+        });
+      }
+
       // Sort by total_marks desc
       entries.sort((a, b) => b.total_marks - a.total_marks);
 
       setLeaderboards(prev => ({ ...prev, [compId]: entries }));
+
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     } finally {
@@ -191,6 +209,21 @@ export default function Results() {
   function renderLeaderboard(compId: string) {
     const entries = leaderboards[compId];
     const max = maxMarks[compId] || 0;
+    const compName = competitions.find((c) => c.id === compId)?.name || 'Competition';
+
+    const shareLink = (entry: LeaderboardEntry, rank: number) =>
+      waLink(
+        entry.phone || '',
+        resultMessage({
+          name: entry.student_name,
+          competitionName: compName,
+          totalMarks: entry.total_marks,
+          maxMarks: max,
+          percentage: safePercentage(entry.total_marks, max),
+          rank,
+        }),
+      );
+
 
     if (loadingComps.has(compId)) {
       return <p className="text-muted-foreground text-center py-6">Loading results...</p>;
@@ -258,6 +291,8 @@ export default function Results() {
                 <TableHead>Started</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Time Taken</TableHead>
+                <TableHead className="text-right">Share</TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -308,7 +343,21 @@ export default function Results() {
                   <TableCell className="whitespace-nowrap text-sm font-bold text-primary font-display">
                     {formatDurationBetween(entry.started_at, entry.submitted_at)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    {entry.phone ? (
+                      <a href={shareLink(entry, index + 1)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="border-accent/40 text-accent" title="Send result on WhatsApp">
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled title="No phone number">
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
+
               ))}
             </TableBody>
           </Table>

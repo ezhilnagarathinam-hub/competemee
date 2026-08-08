@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Plus, Calendar, Clock, Eye, EyeOff, Trophy, Trash2, Edit, FileText } from 'lucide-react';
+import { Plus, Calendar, Clock, Eye, EyeOff, Trophy, Trash2, Edit, FileText, MessageCircle } from 'lucide-react';
+import { WhatsAppNotifyDialog, type WhatsAppRecipient } from '@/components/admin/WhatsAppNotifyDialog';
+import { testLiveMessage } from '@/lib/whatsapp';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +25,35 @@ export default function Competitions() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('minutes');
   const [durationValue, setDurationValue] = useState(60);
+  const [notifyComp, setNotifyComp] = useState<Competition | null>(null);
+  const [notifyRecipients, setNotifyRecipients] = useState<WhatsAppRecipient[]>([]);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+
+  async function openNotify(comp: Competition) {
+    setNotifyComp(comp);
+    setNotifyRecipients([]);
+    setNotifyLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('student_competitions')
+        .select('student_id, students(id, name, phone)')
+        .eq('competition_id', comp.id);
+      if (error) throw error;
+      const list = (data || [])
+        .map((row: any) => row.students)
+        .filter(Boolean)
+        .map((s: any) => ({ id: s.id, name: s.name, phone: s.phone }))
+        .sort((a: WhatsAppRecipient, b: WhatsAppRecipient) => a.name.localeCompare(b.name));
+      setNotifyRecipients(list);
+    } catch (error) {
+      console.error('Failed to load allotted players:', error);
+      toast.error('Could not load the allotted players');
+    } finally {
+      setNotifyLoading(false);
+    }
+  }
+
+
   
   const [formData, setFormData] = useState({
     name: '',
@@ -479,6 +511,16 @@ export default function Competitions() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => openNotify(comp)}
+                        title="Notify allotted players on WhatsApp"
+                        className="border-accent/40 text-accent hover:bg-accent/10"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                      <Button
+
+                        variant="outline"
+                        size="sm"
                         onClick={() => deleteCompetition(comp.id)}
                         className="text-destructive hover:bg-destructive/10"
                       >
@@ -492,6 +534,23 @@ export default function Competitions() {
           ))}
         </div>
       )}
+
+      {notifyComp && (
+        <WhatsAppNotifyDialog
+          open={!!notifyComp}
+          onOpenChange={(open) => !open && setNotifyComp(null)}
+          title="NOTIFY PLAYERS"
+          description={
+            notifyLoading
+              ? 'Loading allotted players...'
+              : `${notifyRecipients.length} player(s) allotted to ${notifyComp.name}. Each message opens in WhatsApp with the text ready.`
+          }
+          recipients={notifyRecipients}
+          buildMessage={(r) => testLiveMessage(r.name, notifyComp)}
+          groupMessage={testLiveMessage('players', notifyComp)}
+        />
+      )}
     </div>
+
   );
 }

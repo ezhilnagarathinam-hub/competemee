@@ -9,6 +9,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatTimestampShort } from '@/lib/timeFormat';
+import { credentialsMessage, waLink } from '@/lib/whatsapp';
+
 
 interface SignupRequest {
   id: string;
@@ -122,20 +124,13 @@ export default function Signups() {
   }
 
   function credentialMessage(c: ApprovedCreds) {
-    return (
-      `Hi ${c.name}, your Compete Me account is approved!\n\n` +
-      `Username: ${c.username}\n` +
-      `Password: ${c.password}\n\n` +
-      `Login here: ${window.location.origin}/student/login\n\n` +
-      `Your tests will be allotted by the admin. All the best!`
-    );
+    return credentialsMessage(c);
   }
 
   function whatsappLink(c: ApprovedCreds) {
-    const digits = c.phone.replace(/\D/g, '');
-    const withCode = digits.length === 10 ? `91${digits}` : digits;
-    return `https://wa.me/${withCode}?text=${encodeURIComponent(credentialMessage(c))}`;
+    return waLink(c.phone, credentialsMessage(c));
   }
+
 
   const filtered = requests.filter((r) => r.status === tab);
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
