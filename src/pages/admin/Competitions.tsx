@@ -511,6 +511,16 @@ export default function Competitions() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => openNotify(comp)}
+                        title="Notify allotted players on WhatsApp"
+                        className="border-accent/40 text-accent hover:bg-accent/10"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                      <Button
+
+                        variant="outline"
+                        size="sm"
                         onClick={() => deleteCompetition(comp.id)}
                         className="text-destructive hover:bg-destructive/10"
                       >
