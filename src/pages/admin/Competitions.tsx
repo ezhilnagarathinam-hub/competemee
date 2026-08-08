@@ -534,6 +534,23 @@ export default function Competitions() {
           ))}
         </div>
       )}
+
+      {notifyComp && (
+        <WhatsAppNotifyDialog
+          open={!!notifyComp}
+          onOpenChange={(open) => !open && setNotifyComp(null)}
+          title="NOTIFY PLAYERS"
+          description={
+            notifyLoading
+              ? 'Loading allotted players...'
+              : `${notifyRecipients.length} player(s) allotted to ${notifyComp.name}. Each message opens in WhatsApp with the text ready.`
+          }
+          recipients={notifyRecipients}
+          buildMessage={(r) => testLiveMessage(r.name, notifyComp)}
+          groupMessage={testLiveMessage('players', notifyComp)}
+        />
+      )}
     </div>
+
   );
 }
