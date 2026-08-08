@@ -343,7 +343,21 @@ export default function Results() {
                   <TableCell className="whitespace-nowrap text-sm font-bold text-primary font-display">
                     {formatDurationBetween(entry.started_at, entry.submitted_at)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    {entry.phone ? (
+                      <a href={shareLink(entry, index + 1)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="border-accent/40 text-accent" title="Send result on WhatsApp">
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled title="No phone number">
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
+
               ))}
             </TableBody>
           </Table>
