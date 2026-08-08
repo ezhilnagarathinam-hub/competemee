@@ -1,44 +1,38 @@
+# WhatsApp Notifications via wa.me Links
 
+Staying on free `wa.me` deep links — no AiSensy, no WATI, no Meta verification, no per-message cost. Every message is composed by the app and opens in your WhatsApp with the text pre-filled; you tap send.
 
-## Plan: Add End Date to Competitions + Results History with Collapsible Sections
+Today only one of these exists (credentials on approval, in Signup Requests). This adds the other two and makes all three share one message system.
 
-### 1. Add `end_date` column to competitions table
+## What you get
 
-**Database migration** to add an `end_date` column (date, nullable, defaults to `date` value). If `end_date` is null or same as `date`, the competition ends at `end_time` on that day. If different, the competition window spans multiple days but duration limit still applies per student.
+**1. Credentials on approval** (already working — will be moved onto the shared helper so the wording matches the rest)
+Sent from Signup Requests after you approve a player.
 
-### 2. Update Competition form and display
+**2. Test live / reminder**
+On the Competitions page, each competition gets a "Notify Players" action. It lists every player allotted to that competition with a WhatsApp button per row, plus the message preview. Text includes competition name, date, start–end time (12-hour format), duration, and the login link.
 
-**File: `src/pages/admin/Competitions.tsx`**
-- Rename current "Date" field to "Start Date"
-- Add "End Date" field below it, defaulting to start date
-- Update `formData` to include `end_date`
-- Update `openEdit` to populate `end_date`
-- Display date range on competition cards (e.g., "Apr 13 – Apr 15, 2026" or just "Apr 13, 2026" if same day)
+**3. Result published**
+On the Results page, each leaderboard row gets a WhatsApp button. Text includes competition name, the player's score out of max marks, percentage, rank, and the link to view their full answer review.
 
-**File: `src/types/database.ts`**
-- Add `end_date: string | null` to `Competition` interface
+## How sending works
 
-### 3. Update student dashboard date logic
+Because `wa.me` opens one chat at a time, "notify everyone" cannot be one click. Each list gives you:
+- A **per-player WhatsApp button** — opens that chat with text ready.
+- A **Copy message** button — for pasting into a WhatsApp group, which is the fast way to reach a whole batch.
+- A **sent tick** that greys out rows you have already opened this session, so you don't double-message.
 
-**File: `src/pages/student/StudentDashboard.tsx`**
-- Use `end_date` (or fallback to `date`) + `end_time` to determine when competition window closes
-- Countdown timer uses `end_date` for "Ends in" calculation
+If you later want true one-click bulk sending, that is the point where AiSensy becomes worth paying for — the message templates built here would carry over.
 
-### 4. Redesign Results page with history and collapsible sections
+## Technical notes
 
-**File: `src/pages/admin/Results.tsx`**
-- Remove the competition dropdown selector
-- Group competitions by date (most recent first)
-- Show the most recent competition's results expanded by default
-- Older competitions shown as collapsible accordion items using the existing `Accordion` component
-- Each section header shows: competition name, date, participant count
-- Expanding reveals the leaderboard table and top-3 cards
-- Each competition section is self-contained with its own data fetching
+- New `src/lib/whatsapp.ts`: `toWaNumber(phone)` (strips non-digits, prefixes `91` for 10-digit numbers), `waLink(phone, text)`, and three builders — `credentialsMessage`, `testLiveMessage`, `resultMessage`. All use `window.location.origin` for links and `src/lib/timeFormat.ts` for 12-hour times.
+- New `src/components/admin/WhatsAppNotifyDialog.tsx`: reusable recipient list (name, phone, per-row send + copy, sent state held in local `Set`). Takes recipients and a message builder as props.
+- `src/pages/admin/Competitions.tsx`: add "Notify Players" per competition; recipients from `student_competitions` joined to `students` for that `competition_id`.
+- `src/pages/admin/Results.tsx`: add a WhatsApp button per leaderboard row; needs `phone` added to the existing student select in `loadLeaderboard` if it isn't fetched yet.
+- `src/pages/admin/Signups.tsx`: replace its local `credentialMessage` / `whatsappLink` with the shared helpers — no behaviour change.
+- No database changes, no edge functions, no secrets.
 
-### Technical Details
+## Security note
 
-- Migration SQL: `ALTER TABLE competitions ADD COLUMN end_date date;`
-- The `end_date` defaults to `date` in the form when not explicitly set
-- Duration limit enforcement remains unchanged (per-student timer)
-- Results page fetches all competitions with submissions, lazy-loads leaderboard data on accordion expand
-
+Passwords are delivered as plain text over WhatsApp, and are also stored in plain text in the players table. Worth fixing before you scale, but out of scope here — say the word and I'll plan a hashed-password migration with a forced change on first login.
