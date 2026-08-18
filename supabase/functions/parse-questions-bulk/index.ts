@@ -281,24 +281,43 @@ function extractQuestions(raw: string): any[] {
   return salvageQuestions(cleaned);
 }
 
+// Split on question boundaries (a line starting with a question number) so a
+// single question is never cut across two chunks — that was another source of
+// "options in a separate record" errors.
+function splitIntoQuestionBlocks(text: string): string[] {
+  const lines = text.split(/\r?\n/);
+  const isStart = (line: string) =>
+    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
+  const blocks: string[] = [];
+  let buf: string[] = [];
+  for (const line of lines) {
+    if (isStart(line) && buf.join('\n').trim().length > 0) {
+      blocks.push(buf.join('\n'));
+      buf = [];
+    }
+    buf.push(line);
+  }
+  if (buf.join('\n').trim().length > 0) blocks.push(buf.join('\n'));
+  if (blocks.length <= 1) return text.split(/\n\s*\n/);
+  return blocks;
+}
+
 function splitIntoChunks(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text];
-  const paragraphs = text.split(/\n\s*\n/);
+  const blocks = splitIntoQuestionBlocks(text);
   const chunks: string[] = [];
   let buf = '';
-  for (const p of paragraphs) {
-    if (buf.length + p.length + 2 > maxLen && buf.length > 0) {
+  for (const b of blocks) {
+    if (buf.length + b.length + 2 > maxLen && buf.length > 0) {
       chunks.push(buf);
       buf = '';
     }
-    if (p.length > maxLen) {
+    if (b.length > maxLen) {
       if (buf) { chunks.push(buf); buf = ''; }
-      for (let i = 0; i < p.length; i += maxLen) {
-        chunks.push(p.substring(i, i + maxLen));
-      }
+      for (let i = 0; i < b.length; i += maxLen) chunks.push(b.substring(i, i + maxLen));
       continue;
     }
-    buf += (buf ? '\n\n' : '') + p;
+    buf += (buf ? '\n\n' : '') + b;
   }
   if (buf) chunks.push(buf);
   return chunks;
