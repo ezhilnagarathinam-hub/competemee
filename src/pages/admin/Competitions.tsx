@@ -63,6 +63,7 @@ export default function Competitions() {
     start_time: '',
     end_time: '',
     duration_minutes: 60,
+    max_attempts: 1,
     primary_color: '#0D9488',
     secondary_color: '#F59E0B',
   });
@@ -223,6 +224,7 @@ export default function Competitions() {
       start_time: '',
       end_time: '',
       duration_minutes: 60,
+      max_attempts: 1,
       primary_color: '#0D9488',
       secondary_color: '#F59E0B',
     });
@@ -240,6 +242,7 @@ export default function Competitions() {
       start_time: comp.start_time,
       end_time: comp.end_time,
       duration_minutes: comp.duration_minutes,
+      max_attempts: comp.max_attempts ?? 1,
       primary_color: comp.primary_color,
       secondary_color: comp.secondary_color,
     });
@@ -348,6 +351,41 @@ export default function Competitions() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max_attempts">Attempts Allowed</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.max_attempts === 0 ? 'unlimited' : [1, 2, 3].includes(formData.max_attempts) ? String(formData.max_attempts) : 'custom'}
+                      onValueChange={(v) => {
+                        if (v === 'unlimited') setFormData({ ...formData, max_attempts: 0 });
+                        else if (v === 'custom') setFormData({ ...formData, max_attempts: 4 });
+                        else setFormData({ ...formData, max_attempts: Number(v) });
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 attempt</SelectItem>
+                        <SelectItem value="2">2 attempts</SelectItem>
+                        <SelectItem value="3">3 attempts</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                        <SelectItem value="unlimited">Unlimited</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.max_attempts !== 0 && ![1, 2, 3].includes(formData.max_attempts) && (
+                      <Input
+                        type="number"
+                        min="1"
+                        className="w-20"
+                        value={formData.max_attempts}
+                        onChange={(e) => setFormData({ ...formData, max_attempts: Math.max(1, parseInt(e.target.value) || 1) })}
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Players can retake the test this many times (per-player overrides in Students).</p>
                 </div>
               </div>
 
