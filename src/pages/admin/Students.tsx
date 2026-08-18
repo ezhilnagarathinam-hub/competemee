@@ -322,7 +322,7 @@ export default function Students() {
       return;
     }
     toast.success(value === null ? 'Using the test default' : value === 0 ? 'Unlimited attempts allowed' : `${value} attempt(s) allowed`);
-    fetchData();
+    fetchStudents();
   }
 
   async function resetAttempts(studentId: string, competitionId: string) {
@@ -336,7 +336,7 @@ export default function Students() {
       return;
     }
     toast.success('Attempt count reset');
-    fetchData();
+    fetchStudents();
   }
 
   function toggleCompetition(compId: string) {
