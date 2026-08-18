@@ -74,6 +74,8 @@ export default function StudentDashboard() {
           submitted_at: enrollment.submitted_at,
           total_marks: enrollment.total_marks,
           is_locked: enrollment.is_locked ?? false,
+          attempts_allowed: enrollment.attempts_allowed ?? null,
+          attempts_used: enrollment.attempts_used ?? 0,
         } as StudentCompetition : undefined;
 
         // Decide whether to use the local flag: only if it's recent (TTL) and server hasn't reflected submission yet.
@@ -163,6 +165,44 @@ export default function StudentDashboard() {
     const windowEnd = competitionDateTime(comp.end_date || comp.date, comp.end_time);
 
     return now >= windowStart && now <= windowEnd;
+  }
+
+  function attemptsLeft(comp: CompetitionWithStatus): number {
+    const allowed = comp.studentStatus?.attempts_allowed ?? comp.max_attempts ?? 1;
+    if (allowed === 0) return Infinity;
+    const used = comp.studentStatus?.attempts_used ?? 0;
+    return Math.max(0, allowed - used);
+  }
+
+  function windowOpen(comp: CompetitionWithStatus): boolean {
+    const now = serverNow();
+    return now >= competitionDateTime(comp.date, comp.start_time)
+      && now <= competitionDateTime(comp.end_date || comp.date, comp.end_time);
+  }
+
+  async function handleRetake(comp: CompetitionWithStatus) {
+    try {
+      await syncServerTime(true);
+      if (!windowOpen(comp)) {
+        toast.error('This test window is not open right now.');
+        fetchCompetitions();
+        return;
+      }
+      const { error } = await supabase.rpc('start_new_attempt', {
+        p_student_id: studentId,
+        p_competition_id: comp.id,
+      });
+      if (error) {
+        toast.error(error.message || 'Could not start a new attempt');
+        fetchCompetitions();
+        return;
+      }
+      try { localStorage.removeItem(`submittedCompetition:${comp.id}`); } catch {}
+      navigate(`/student/test/${comp.id}`);
+    } catch (e) {
+      console.error('Retake failed:', e);
+      toast.error('Could not start a new attempt');
+    }
   }
 
   function isBeforeStart(comp: CompetitionWithStatus): boolean {
@@ -261,6 +301,8 @@ export default function StudentDashboard() {
             const isLocked = !!comp.studentStatus?.is_locked;
             const isCompleted = hasSubmitted || isLocked;
             const isEnrolled = comp.isEnrolled;
+            const left = attemptsLeft(comp);
+            const canRetake = isEnrolled && isCompleted && left > 0 && windowOpen(comp);
 
             return (
               <Card key={comp.id} className={`glass-card overflow-hidden transition-all ${isEnrolled ? 'hover:border-primary/50' : 'opacity-80'}`}>
@@ -326,10 +368,25 @@ export default function StudentDashboard() {
                         )
                       ) : isCompleted ? (
                         <div className="flex flex-col items-end gap-1">
+                          {canRetake ? (
+                            <>
+                              <Button
+                                onClick={() => handleRetake(comp)}
+                                className="gradient-primary text-primary-foreground shadow-neon compete-btn"
+                              >
+                                <Zap className="w-4 h-4 mr-2" />
+                                RETAKE TEST
+                              </Button>
+                              <p className="text-[10px] text-muted-foreground">
+                                {left === Infinity ? 'Unlimited attempts' : `${left} attempt${left > 1 ? 's' : ''} left`}
+                              </p>
+                            </>
+                          ) : (
                           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 text-destructive border border-destructive/30">
                             <Lock className="w-5 h-5" />
                             <span className="font-bold">LOCKED</span>
                           </div>
+                          )}
                           {comp.studentStatus?.submitted_at && (
                             <div className="text-[11px] text-muted-foreground mt-1">Locked on {format(parseISO(comp.studentStatus.submitted_at), 'MMM dd, yyyy HH:mm')}</div>
                           )}
