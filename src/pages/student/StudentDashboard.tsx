@@ -259,6 +259,7 @@ export default function StudentDashboard() {
           .update({
             has_started: true,
             started_at: serverNow().toISOString(),
+            attempts_used: Math.max(1, (existing.attempts_used ?? 0) + 1),
           })
           .eq('id', existing.id);
 
