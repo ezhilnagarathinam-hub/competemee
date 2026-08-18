@@ -65,7 +65,7 @@ export default function Students() {
 
       const { data: scData } = await supabase
         .from('student_competitions')
-        .select('student_id, competition_id, has_started, has_submitted, is_locked');
+        .select('student_id, competition_id, has_started, has_submitted, is_locked, attempts_allowed, attempts_used');
       
       const mappings: Record<string, any[]> = {};
       (scData || []).forEach((sc: any) => {
@@ -295,12 +295,48 @@ export default function Students() {
     toast.success('Credentials copied!');
   }
 
-  function getCompetitionInfo(studentId: string): { name: string; submitted: boolean; locked: boolean; compId: string }[] {
+  function getCompetitionInfo(studentId: string): { name: string; submitted: boolean; locked: boolean; compId: string; attemptsAllowed: number | null; attemptsUsed: number; testAttempts: number }[] {
     const scs = studentCompetitions[studentId] || [];
     return scs.map((sc: any) => {
       const comp = competitions.find(c => c.id === sc.competition_id);
-      return { name: comp?.name || '', submitted: sc.has_submitted, locked: sc.is_locked ?? false, compId: sc.competition_id };
+      return {
+        name: comp?.name || '',
+        submitted: sc.has_submitted,
+        locked: sc.is_locked ?? false,
+        compId: sc.competition_id,
+        attemptsAllowed: sc.attempts_allowed ?? null,
+        attemptsUsed: sc.attempts_used ?? 0,
+        testAttempts: (comp as any)?.max_attempts ?? 1,
+      };
     }).filter(c => c.name);
+  }
+
+  async function setAttemptsOverride(studentId: string, competitionId: string, value: number | null) {
+    const { error } = await supabase
+      .from('student_competitions')
+      .update({ attempts_allowed: value })
+      .eq('student_id', studentId)
+      .eq('competition_id', competitionId);
+    if (error) {
+      toast.error('Could not update attempts');
+      return;
+    }
+    toast.success(value === null ? 'Using the test default' : value === 0 ? 'Unlimited attempts allowed' : `${value} attempt(s) allowed`);
+    fetchStudents();
+  }
+
+  async function resetAttempts(studentId: string, competitionId: string) {
+    const { error } = await supabase
+      .from('student_competitions')
+      .update({ attempts_used: 0 })
+      .eq('student_id', studentId)
+      .eq('competition_id', competitionId);
+    if (error) {
+      toast.error('Could not reset attempts');
+      return;
+    }
+    toast.success('Attempt count reset');
+    fetchStudents();
   }
 
   function toggleCompetition(compId: string) {
@@ -554,7 +590,8 @@ export default function Students() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {assigned.map((info) => (
-                              <div key={info.compId} className="flex items-center justify-between gap-2 px-2 py-1.5">
+                              <div key={info.compId} className="px-2 py-1.5 space-y-1.5 border-b border-border/50 last:border-0">
+                              <div className="flex items-center justify-between gap-2">
                                 <span className="text-sm truncate">
                                   {info.name}
                                   {info.submitted ? ' ✓' : ''}
@@ -568,6 +605,44 @@ export default function Students() {
                                 >
                                   {info.locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                                 </Button>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-muted-foreground shrink-0">
+                                  Used {info.attemptsUsed}
+                                </span>
+                                <select
+                                  className="flex-1 h-7 rounded-md border border-border bg-background px-1 text-[11px]"
+                                  value={info.attemptsAllowed === null ? 'default' : info.attemptsAllowed === 0 ? 'unlimited' : String(info.attemptsAllowed)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setAttemptsOverride(
+                                      student.id,
+                                      info.compId,
+                                      v === 'default' ? null : v === 'unlimited' ? 0 : Number(v)
+                                    );
+                                  }}
+                                >
+                                  <option value="default">
+                                    Test default ({info.testAttempts === 0 ? 'unlimited' : info.testAttempts})
+                                  </option>
+                                  <option value="1">1 attempt</option>
+                                  <option value="2">2 attempts</option>
+                                  <option value="3">3 attempts</option>
+                                  <option value="5">5 attempts</option>
+                                  <option value="10">10 attempts</option>
+                                  <option value="unlimited">Unlimited</option>
+                                </select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px] shrink-0"
+                                  title="Reset the attempt counter to zero"
+                                  onClick={(e) => { e.preventDefault(); resetAttempts(student.id, info.compId); }}
+                                >
+                                  Reset
+                                </Button>
+                              </div>
                               </div>
                             ))}
                           </DropdownMenuContent>

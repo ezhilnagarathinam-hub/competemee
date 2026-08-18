@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       results.push(parsed as any[]);
     }
 
-    let questions = results.flat();
+    let questions = mergeSplitQuestions(results.flat());
 
     // Sanity-clean every question so options can NEVER be empty just because
     // the model accidentally split them across two records.
@@ -114,6 +114,75 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// The model sometimes emits ONE question as TWO records: the first holds the
+// question text with empty options, the second holds the 4 options with an
+// empty / option-looking question_text. That inflates the count (100 -> 107).
+// Stitch those pairs back together and drop leftover fragments.
+function optionCount(q: any): number {
+  return ['option_a', 'option_b', 'option_c', 'option_d']
+    .filter((k) => String(q?.[k] || '').trim().length > 0).length;
+}
+
+function looksLikeFragment(q: any): boolean {
+  const t = String(q?.question_text || '').trim();
+  if (t.length === 0) return true;
+  // pure numbering / option label leftovers
+  if (/^(?:[A-Da-d1-4][\).\.]?|\(?[A-Da-d1-4]\)|Q?\.?\s*\d+[\).:-]?)$/.test(t)) return true;
+  return t.length < 12 && optionCount(q) >= 3;
+}
+
+function mergeSplitQuestions(list: any[]): any[] {
+  const out: any[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const cur = { ...(list[i] || {}) };
+    const curOpts = optionCount(cur);
+    const next = list[i + 1];
+
+    // Case A: current has text but is missing options, next carries the options.
+    if (curOpts < 4 && next && optionCount(next) >= 3 && looksLikeFragment(next)) {
+      for (const k of ['option_a', 'option_b', 'option_c', 'option_d']) {
+        if (!String(cur[k] || '').trim()) cur[k] = next[k];
+      }
+      if (!cur.correct_answer && next.correct_answer) cur.correct_answer = next.correct_answer;
+      if (!cur.explanation && next.explanation) cur.explanation = next.explanation;
+      for (const k of [
+        'question_text_secondary', 'option_a_secondary', 'option_b_secondary',
+        'option_c_secondary', 'option_d_secondary', 'explanation_secondary', 'secondary_language',
+      ]) {
+        if (!String(cur[k] || '').trim() && next[k]) cur[k] = next[k];
+      }
+      i++; // consume the fragment
+      out.push(cur);
+      continue;
+    }
+
+    // Case B: current is an orphan fragment (no usable question text) -> attach
+    // its options to the previous record if that one is incomplete, else drop.
+    if (looksLikeFragment(cur)) {
+      const prev = out[out.length - 1];
+      if (prev && optionCount(prev) < 4 && optionCount(cur) > 0) {
+        for (const k of ['option_a', 'option_b', 'option_c', 'option_d']) {
+          if (!String(prev[k] || '').trim()) prev[k] = cur[k];
+        }
+        if (!prev.correct_answer && cur.correct_answer) prev.correct_answer = cur.correct_answer;
+      }
+      continue;
+    }
+
+    out.push(cur);
+  }
+
+  // Drop exact duplicates (same question text + first option) that chunk
+  // overlaps can produce.
+  const seen = new Set<string>();
+  return out.filter((q) => {
+    const key = (String(q.question_text || '').trim() + '||' + String(q.option_a || '').trim()).toLowerCase();
+    if (!key.trim() || seen.has(key)) return seen.has(key) ? false : true;
+    seen.add(key);
+    return true;
+  });
+}
 
 function sanitizeQuestion(q: any): any | null {
   if (!q || typeof q !== 'object') return null;
@@ -212,24 +281,43 @@ function extractQuestions(raw: string): any[] {
   return salvageQuestions(cleaned);
 }
 
+// Split on question boundaries (a line starting with a question number) so a
+// single question is never cut across two chunks — that was another source of
+// "options in a separate record" errors.
+function splitIntoQuestionBlocks(text: string): string[] {
+  const lines = text.split(/\r?\n/);
+  const isStart = (line: string) =>
+    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
+  const blocks: string[] = [];
+  let buf: string[] = [];
+  for (const line of lines) {
+    if (isStart(line) && buf.join('\n').trim().length > 0) {
+      blocks.push(buf.join('\n'));
+      buf = [];
+    }
+    buf.push(line);
+  }
+  if (buf.join('\n').trim().length > 0) blocks.push(buf.join('\n'));
+  if (blocks.length <= 1) return text.split(/\n\s*\n/);
+  return blocks;
+}
+
 function splitIntoChunks(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text];
-  const paragraphs = text.split(/\n\s*\n/);
+  const blocks = splitIntoQuestionBlocks(text);
   const chunks: string[] = [];
   let buf = '';
-  for (const p of paragraphs) {
-    if (buf.length + p.length + 2 > maxLen && buf.length > 0) {
+  for (const b of blocks) {
+    if (buf.length + b.length + 2 > maxLen && buf.length > 0) {
       chunks.push(buf);
       buf = '';
     }
-    if (p.length > maxLen) {
+    if (b.length > maxLen) {
       if (buf) { chunks.push(buf); buf = ''; }
-      for (let i = 0; i < p.length; i += maxLen) {
-        chunks.push(p.substring(i, i + maxLen));
-      }
+      for (let i = 0; i < b.length; i += maxLen) chunks.push(b.substring(i, i + maxLen));
       continue;
     }
-    buf += (buf ? '\n\n' : '') + p;
+    buf += (buf ? '\n\n' : '') + b;
   }
   if (buf) chunks.push(buf);
   return chunks;

@@ -139,6 +139,7 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean | null
+          max_attempts: number
           name: string
           primary_color: string | null
           secondary_color: string | null
@@ -157,6 +158,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean | null
+          max_attempts?: number
           name: string
           primary_color?: string | null
           secondary_color?: string | null
@@ -175,6 +177,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean | null
+          max_attempts?: number
           name?: string
           primary_color?: string | null
           secondary_color?: string | null
@@ -323,6 +326,8 @@ export type Database = {
       }
       student_competitions: {
         Row: {
+          attempts_allowed: number | null
+          attempts_used: number
           competition_id: string
           current_question: number | null
           has_started: boolean | null
@@ -336,6 +341,8 @@ export type Database = {
           total_marks: number | null
         }
         Insert: {
+          attempts_allowed?: number | null
+          attempts_used?: number
           competition_id: string
           current_question?: number | null
           has_started?: boolean | null
@@ -349,6 +356,8 @@ export type Database = {
           total_marks?: number | null
         }
         Update: {
+          attempts_allowed?: number | null
+          attempts_used?: number
           competition_id?: string
           current_question?: number | null
           has_started?: boolean | null
@@ -570,6 +579,10 @@ export type Database = {
         Returns: undefined
       }
       server_now: { Args: never; Returns: string }
+      start_new_attempt: {
+        Args: { p_competition_id: string; p_student_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "student"

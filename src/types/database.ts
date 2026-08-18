@@ -15,6 +15,7 @@ export interface Competition {
   start_time: string;
   end_time: string;
   duration_minutes: number;
+  max_attempts: number;
   primary_color: string;
   secondary_color: string;
   is_active: boolean;
@@ -74,6 +75,8 @@ export interface StudentCompetition {
   submitted_at: string | null;
   total_marks: number;
   is_locked: boolean;
+  attempts_allowed?: number | null;
+  attempts_used?: number;
 }
 
 export interface StudentAnswer {
