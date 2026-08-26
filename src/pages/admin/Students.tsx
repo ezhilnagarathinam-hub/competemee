@@ -737,8 +737,23 @@ export default function Students() {
             </TableHeader>
             <TableBody>
               {filteredStudents.map((student) => (
-                <TableRow key={student.id} className="hover:bg-primary/5">
+                <TableRow key={student.id} className={`hover:bg-primary/5 ${!student.is_active ? 'opacity-50' : ''}`}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-primary"
+                      checked={selectedIds.includes(student.id)}
+                      onChange={() => toggleSelect(student.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-bold">{student.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={student.is_active ? 'border-accent text-accent' : 'border-destructive text-destructive'}>
+                      {student.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{student.batch || '—'}</TableCell>
+                  <TableCell className="text-sm">{student.category || 'Free'}</TableCell>
                   <TableCell>{student.phone}</TableCell>
                   <TableCell>
                     {(() => {
