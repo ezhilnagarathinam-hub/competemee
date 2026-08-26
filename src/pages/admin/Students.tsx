@@ -166,15 +166,20 @@ export default function Students() {
       toast.error('Select a competition first');
       return;
     }
-    if (students.length === 0) {
-      toast.error('No players to assign');
+    // Assign only to the currently filtered, ACTIVE players (or selected ones if any are ticked)
+    const base = selectedIds.length > 0
+      ? students.filter(s => selectedIds.includes(s.id))
+      : filteredStudents.filter(s => s.is_active);
+
+    if (base.length === 0) {
+      toast.error(selectedIds.length > 0 ? 'No players selected' : 'No active players match the current filters');
       return;
     }
-    if (!confirm(`Assign this competition to all ${students.length} players?`)) return;
+    if (!confirm(`Assign this competition to ${base.length} player(s)?`)) return;
 
     setBulkAssigning(true);
     try {
-      const toInsert = students
+      const toInsert = base
         .filter(s => !(studentCompetitions[s.id] || []).some((sc: any) => sc.competition_id === bulkAssignCompId))
         .map(s => ({ student_id: s.id, competition_id: bulkAssignCompId }));
 
@@ -206,6 +211,8 @@ export default function Students() {
           email: formData.email || null,
           phone: formData.phone,
           address: formData.address || null,
+          batch: formData.batch || null,
+          category: formData.category || 'Free',
         };
         
         if (formData.username) updateData.username = formData.username;
@@ -225,6 +232,8 @@ export default function Students() {
             email: formData.email || null,
             phone: formData.phone,
             address: formData.address || null,
+            batch: formData.batch || null,
+            category: formData.category || 'Free',
           } as any])
           .select()
           .single();
