@@ -59,6 +59,10 @@ export interface Student {
   username: string;
   password: string;
   student_number: number;
+  is_active: boolean;
+  batch: string | null;
+  category: string;
+  exam?: string | null;
   created_at: string;
   updated_at: string;
 }
