@@ -423,10 +423,13 @@ export default function Students() {
         <DownloadMenu
           filename={`players-${new Date().toISOString().split('T')[0]}`}
           title="Players"
-          headers={['Student #', 'Name', 'Phone', 'Email', 'Address', 'Username', 'Password', 'Competitions Assigned']}
+          headers={['Student #', 'Name', 'Status', 'Batch', 'Category', 'Phone', 'Email', 'Address', 'Username', 'Password', 'Competitions Assigned']}
           rows={students.map(s => [
             s.student_number,
             s.name,
+            s.is_active ? 'Active' : 'Inactive',
+            s.batch || '',
+            s.category || 'Free',
             s.phone,
             s.email || '',
             s.address || '',
