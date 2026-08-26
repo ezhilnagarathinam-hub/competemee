@@ -464,6 +464,25 @@ export default function Students() {
                 <Label htmlFor="address">Address</Label>
                 <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Enter address" />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="batch">Batch</Label>
+                  <Input id="batch" value={formData.batch} onChange={(e) => setFormData({ ...formData, batch: e.target.value })} placeholder="e.g. Batch A" list="batch-suggestions" />
+                  <datalist id="batch-suggestions">
+                    {batchOptions.map(b => <option key={b} value={b} />)}
+                  </datalist>
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Free">Free</SelectItem>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -573,8 +592,44 @@ export default function Students() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Batch</Label>
+              <Select value={batchFilter} onValueChange={setBatchFilter}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All batches</SelectItem>
+                  {batchOptions.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Category</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {categoryOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="flex-1 min-w-[260px] space-y-1">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Assign Competition to ALL Players</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Allot Competition to {selectedIds.length > 0 ? `${selectedIds.length} Selected` : 'Filtered Active Players'}
+            </Label>
             <div className="flex gap-2">
               <Select value={bulkAssignCompId} onValueChange={setBulkAssignCompId}>
                 <SelectTrigger className="flex-1">
