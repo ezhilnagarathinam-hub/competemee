@@ -662,6 +662,45 @@ export default function Students() {
         </CardContent>
       </Card>
 
+      {selectedIds.length > 0 && (
+        <Card className="glass-card border-accent/40">
+          <CardContent className="p-3 flex flex-wrap items-center gap-3">
+            <p className="text-sm font-bold text-foreground">{selectedIds.length} selected</p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={bulkBatch}
+                onChange={(e) => setBulkBatch(e.target.value)}
+                placeholder="Batch name…"
+                className="h-9 w-40"
+                list="batch-suggestions"
+              />
+              <Button size="sm" variant="outline" disabled={!bulkBatch.trim()} onClick={() => bulkUpdate({ batch: bulkBatch.trim() }, 'Batch')}>
+                Set Batch
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                <SelectTrigger className="h-9 w-32"><SelectValue placeholder="Category…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Free">Free</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" disabled={!bulkCategory} onClick={() => { bulkUpdate({ category: bulkCategory }, 'Category'); setBulkCategory(''); }}>
+                Set Category
+              </Button>
+            </div>
+            <Button size="sm" variant="outline" className="text-accent border-accent/40" onClick={() => bulkUpdate({ is_active: true }, 'Status (Active)')}>
+              Mark Active
+            </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => bulkUpdate({ is_active: false }, 'Status (Inactive)')}>
+              Mark Inactive
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : students.length === 0 ? (
@@ -677,7 +716,18 @@ export default function Students() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-primary"
+                    checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedIds.includes(s.id))}
+                    onChange={toggleSelectAllFiltered}
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Competitions</TableHead>
                 <TableHead>Username</TableHead>
