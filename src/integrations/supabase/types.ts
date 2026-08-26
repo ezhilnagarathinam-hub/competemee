@@ -437,10 +437,13 @@ export type Database = {
       students: {
         Row: {
           address: string | null
+          batch: string | null
+          category: string
           created_at: string | null
           email: string | null
           exam: string | null
           id: string
+          is_active: boolean
           name: string
           password: string
           phone: string
@@ -450,10 +453,13 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          batch?: string | null
+          category?: string
           created_at?: string | null
           email?: string | null
           exam?: string | null
           id?: string
+          is_active?: boolean
           name: string
           password: string
           phone: string
@@ -463,10 +469,13 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          batch?: string | null
+          category?: string
           created_at?: string | null
           email?: string | null
           exam?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           password?: string
           phone?: string

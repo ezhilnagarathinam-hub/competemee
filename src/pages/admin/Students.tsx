@@ -28,6 +28,12 @@ export default function Students() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkAssignCompId, setBulkAssignCompId] = useState<string>('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [batchFilter, setBatchFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkBatch, setBulkBatch] = useState('');
+  const [bulkCategory, setBulkCategory] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +42,8 @@ export default function Students() {
     address: '',
     username: '',
     password: '',
+    batch: '',
+    category: 'Free',
   });
 
   useEffect(() => {
@@ -95,31 +103,83 @@ export default function Students() {
     }
   }
 
+  const batchOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(s => { if (s.batch) set.add(s.batch); });
+    return Array.from(set).sort();
+  }, [students]);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(s => { if (s.category) set.add(s.category); });
+    if (!set.has('Free')) set.add('Free');
+    if (!set.has('Paid')) set.add('Paid');
+    return Array.from(set).sort();
+  }, [students]);
+
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      (s.username || '').toLowerCase().includes(q) ||
-      (s.phone || '').toLowerCase().includes(q) ||
-      String(s.student_number || '').includes(q)
-    );
-  }, [students, searchQuery]);
+    return students.filter(s => {
+      if (statusFilter === 'active' && !s.is_active) return false;
+      if (statusFilter === 'inactive' && s.is_active) return false;
+      if (batchFilter !== 'all' && (s.batch || '') !== batchFilter) return false;
+      if (categoryFilter !== 'all' && (s.category || 'Free') !== categoryFilter) return false;
+      if (!q) return true;
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.username || '').toLowerCase().includes(q) ||
+        (s.phone || '').toLowerCase().includes(q) ||
+        String(s.student_number || '').includes(q)
+      );
+    });
+  }, [students, searchQuery, statusFilter, batchFilter, categoryFilter]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function toggleSelectAllFiltered() {
+    const filteredIds = filteredStudents.map(s => s.id);
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : filteredIds);
+  }
+
+  async function bulkUpdate(payload: Partial<Student>, label: string) {
+    if (selectedIds.length === 0) return;
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update(payload as any)
+        .in('id', selectedIds);
+      if (error) throw error;
+      toast.success(`${label} updated for ${selectedIds.length} player(s)`);
+      setSelectedIds([]);
+      fetchStudents();
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      toast.error('Bulk update failed');
+    }
+  }
 
   async function bulkAssignToAll() {
     if (!bulkAssignCompId) {
       toast.error('Select a competition first');
       return;
     }
-    if (students.length === 0) {
-      toast.error('No players to assign');
+    // Assign only to the currently filtered, ACTIVE players (or selected ones if any are ticked)
+    const base = selectedIds.length > 0
+      ? students.filter(s => selectedIds.includes(s.id))
+      : filteredStudents.filter(s => s.is_active);
+
+    if (base.length === 0) {
+      toast.error(selectedIds.length > 0 ? 'No players selected' : 'No active players match the current filters');
       return;
     }
-    if (!confirm(`Assign this competition to all ${students.length} players?`)) return;
+    if (!confirm(`Assign this competition to ${base.length} player(s)?`)) return;
 
     setBulkAssigning(true);
     try {
-      const toInsert = students
+      const toInsert = base
         .filter(s => !(studentCompetitions[s.id] || []).some((sc: any) => sc.competition_id === bulkAssignCompId))
         .map(s => ({ student_id: s.id, competition_id: bulkAssignCompId }));
 
@@ -151,6 +211,8 @@ export default function Students() {
           email: formData.email || null,
           phone: formData.phone,
           address: formData.address || null,
+          batch: formData.batch || null,
+          category: formData.category || 'Free',
         };
         
         if (formData.username) updateData.username = formData.username;
@@ -170,6 +232,8 @@ export default function Students() {
             email: formData.email || null,
             phone: formData.phone,
             address: formData.address || null,
+            batch: formData.batch || null,
+            category: formData.category || 'Free',
           } as any])
           .select()
           .single();
@@ -267,7 +331,7 @@ export default function Students() {
   }
 
   function resetForm() {
-    setFormData({ name: '', email: '', phone: '', address: '', username: '', password: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', username: '', password: '', batch: '', category: 'Free' });
     setEditingId(null);
     setSelectedCompetitions([]);
   }
@@ -280,6 +344,8 @@ export default function Students() {
       address: student.address || '',
       username: student.username,
       password: student.password,
+      batch: student.batch || '',
+      category: student.category || 'Free',
     });
     setEditingId(student.id);
     setSelectedCompetitions((studentCompetitions[student.id] || []).map((sc: any) => sc.competition_id));
@@ -357,10 +423,13 @@ export default function Students() {
         <DownloadMenu
           filename={`players-${new Date().toISOString().split('T')[0]}`}
           title="Players"
-          headers={['Student #', 'Name', 'Phone', 'Email', 'Address', 'Username', 'Password', 'Competitions Assigned']}
+          headers={['Student #', 'Name', 'Status', 'Batch', 'Category', 'Phone', 'Email', 'Address', 'Username', 'Password', 'Competitions Assigned']}
           rows={students.map(s => [
             s.student_number,
             s.name,
+            s.is_active ? 'Active' : 'Inactive',
+            s.batch || '',
+            s.category || 'Free',
             s.phone,
             s.email || '',
             s.address || '',
@@ -397,6 +466,25 @@ export default function Students() {
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Enter address" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="batch">Batch</Label>
+                  <Input id="batch" value={formData.batch} onChange={(e) => setFormData({ ...formData, batch: e.target.value })} placeholder="e.g. Batch A" list="batch-suggestions" />
+                  <datalist id="batch-suggestions">
+                    {batchOptions.map(b => <option key={b} value={b} />)}
+                  </datalist>
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Free">Free</SelectItem>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -507,8 +595,44 @@ export default function Students() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Batch</Label>
+              <Select value={batchFilter} onValueChange={setBatchFilter}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All batches</SelectItem>
+                  {batchOptions.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Category</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {categoryOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="flex-1 min-w-[260px] space-y-1">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Assign Competition to ALL Players</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Allot Competition to {selectedIds.length > 0 ? `${selectedIds.length} Selected` : 'Filtered Active Players'}
+            </Label>
             <div className="flex gap-2">
               <Select value={bulkAssignCompId} onValueChange={setBulkAssignCompId}>
                 <SelectTrigger className="flex-1">
@@ -541,6 +665,45 @@ export default function Students() {
         </CardContent>
       </Card>
 
+      {selectedIds.length > 0 && (
+        <Card className="glass-card border-accent/40">
+          <CardContent className="p-3 flex flex-wrap items-center gap-3">
+            <p className="text-sm font-bold text-foreground">{selectedIds.length} selected</p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={bulkBatch}
+                onChange={(e) => setBulkBatch(e.target.value)}
+                placeholder="Batch name…"
+                className="h-9 w-40"
+                list="batch-suggestions"
+              />
+              <Button size="sm" variant="outline" disabled={!bulkBatch.trim()} onClick={() => bulkUpdate({ batch: bulkBatch.trim() }, 'Batch')}>
+                Set Batch
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                <SelectTrigger className="h-9 w-32"><SelectValue placeholder="Category…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Free">Free</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" disabled={!bulkCategory} onClick={() => { bulkUpdate({ category: bulkCategory }, 'Category'); setBulkCategory(''); }}>
+                Set Category
+              </Button>
+            </div>
+            <Button size="sm" variant="outline" className="text-accent border-accent/40" onClick={() => bulkUpdate({ is_active: true }, 'Status (Active)')}>
+              Mark Active
+            </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => bulkUpdate({ is_active: false }, 'Status (Inactive)')}>
+              Mark Inactive
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : students.length === 0 ? (
@@ -556,7 +719,18 @@ export default function Students() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-primary"
+                    checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedIds.includes(s.id))}
+                    onChange={toggleSelectAllFiltered}
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Competitions</TableHead>
                 <TableHead>Username</TableHead>
@@ -566,8 +740,23 @@ export default function Students() {
             </TableHeader>
             <TableBody>
               {filteredStudents.map((student) => (
-                <TableRow key={student.id} className="hover:bg-primary/5">
+                <TableRow key={student.id} className={`hover:bg-primary/5 ${!student.is_active ? 'opacity-50' : ''}`}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-primary"
+                      checked={selectedIds.includes(student.id)}
+                      onChange={() => toggleSelect(student.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-bold">{student.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={student.is_active ? 'border-accent text-accent' : 'border-destructive text-destructive'}>
+                      {student.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{student.batch || '—'}</TableCell>
+                  <TableCell className="text-sm">{student.category || 'Free'}</TableCell>
                   <TableCell>{student.phone}</TableCell>
                   <TableCell>
                     {(() => {
