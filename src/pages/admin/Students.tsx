@@ -28,6 +28,12 @@ export default function Students() {
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkAssignCompId, setBulkAssignCompId] = useState<string>('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [batchFilter, setBatchFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkBatch, setBulkBatch] = useState('');
+  const [bulkCategory, setBulkCategory] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,6 +42,8 @@ export default function Students() {
     address: '',
     username: '',
     password: '',
+    batch: '',
+    category: 'Free',
   });
 
   useEffect(() => {
