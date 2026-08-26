@@ -103,16 +103,63 @@ export default function Students() {
     }
   }
 
+  const batchOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(s => { if (s.batch) set.add(s.batch); });
+    return Array.from(set).sort();
+  }, [students]);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(s => { if (s.category) set.add(s.category); });
+    if (!set.has('Free')) set.add('Free');
+    if (!set.has('Paid')) set.add('Paid');
+    return Array.from(set).sort();
+  }, [students]);
+
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      (s.username || '').toLowerCase().includes(q) ||
-      (s.phone || '').toLowerCase().includes(q) ||
-      String(s.student_number || '').includes(q)
-    );
-  }, [students, searchQuery]);
+    return students.filter(s => {
+      if (statusFilter === 'active' && !s.is_active) return false;
+      if (statusFilter === 'inactive' && s.is_active) return false;
+      if (batchFilter !== 'all' && (s.batch || '') !== batchFilter) return false;
+      if (categoryFilter !== 'all' && (s.category || 'Free') !== categoryFilter) return false;
+      if (!q) return true;
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.username || '').toLowerCase().includes(q) ||
+        (s.phone || '').toLowerCase().includes(q) ||
+        String(s.student_number || '').includes(q)
+      );
+    });
+  }, [students, searchQuery, statusFilter, batchFilter, categoryFilter]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function toggleSelectAllFiltered() {
+    const filteredIds = filteredStudents.map(s => s.id);
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id));
+    setSelectedIds(allSelected ? [] : filteredIds);
+  }
+
+  async function bulkUpdate(payload: Partial<Student>, label: string) {
+    if (selectedIds.length === 0) return;
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update(payload as any)
+        .in('id', selectedIds);
+      if (error) throw error;
+      toast.success(`${label} updated for ${selectedIds.length} player(s)`);
+      setSelectedIds([]);
+      fetchStudents();
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      toast.error('Bulk update failed');
+    }
+  }
 
   async function bulkAssignToAll() {
     if (!bulkAssignCompId) {
@@ -275,7 +322,7 @@ export default function Students() {
   }
 
   function resetForm() {
-    setFormData({ name: '', email: '', phone: '', address: '', username: '', password: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', username: '', password: '', batch: '', category: 'Free' });
     setEditingId(null);
     setSelectedCompetitions([]);
   }
@@ -288,6 +335,8 @@ export default function Students() {
       address: student.address || '',
       username: student.username,
       password: student.password,
+      batch: student.batch || '',
+      category: student.category || 'Free',
     });
     setEditingId(student.id);
     setSelectedCompetitions((studentCompetitions[student.id] || []).map((sc: any) => sc.competition_id));
