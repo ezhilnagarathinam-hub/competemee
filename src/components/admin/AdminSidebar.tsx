@@ -110,7 +110,7 @@ export function AdminSidebar() {
       )}
 
       {/* Mobile sidebar */}
-      <aside className={`fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col relative overflow-hidden z-50 lg:hidden transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col overflow-hidden z-50 lg:hidden transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <button
           onClick={() => setMobileOpen(false)}
           className="absolute top-4 right-4 z-20 p-1 rounded-md hover:bg-muted"
@@ -121,7 +121,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex-col relative overflow-hidden hidden lg:flex">
+      <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex-col overflow-hidden hidden lg:flex">
         {sidebarContent}
       </aside>
     </>
