@@ -276,7 +276,7 @@ export default function Competitions() {
               Create Competition
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg glass-card">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto glass-card">
             <DialogHeader>
               <DialogTitle className="font-display">{editingId ? 'EDIT COMPETITION' : 'CREATE NEW BATTLE'}</DialogTitle>
             </DialogHeader>
