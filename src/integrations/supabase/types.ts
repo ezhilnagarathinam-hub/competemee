@@ -20,6 +20,7 @@ export type Database = {
           email: string
           id: string
           name: string
+          organization_id: string | null
           password_hash: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           email: string
           id?: string
           name: string
+          organization_id?: string | null
           password_hash: string
         }
         Update: {
@@ -34,45 +36,76 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          organization_id?: string | null
           password_hash?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admins_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       batches: {
         Row: {
           created_at: string
           id: string
           name: string
+          organization_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          organization_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
           created_at: string
           id: string
           name: string
+          organization_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          organization_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       competition_result_summaries: {
         Row: {
@@ -87,6 +120,7 @@ export type Database = {
           last_activity_at: string | null
           max_marks: number
           negative_marks: number
+          organization_id: string | null
           percentage: number
           rank: number | null
           started_at: string | null
@@ -109,6 +143,7 @@ export type Database = {
           last_activity_at?: string | null
           max_marks?: number
           negative_marks?: number
+          organization_id?: string | null
           percentage?: number
           rank?: number | null
           started_at?: string | null
@@ -131,6 +166,7 @@ export type Database = {
           last_activity_at?: string | null
           max_marks?: number
           negative_marks?: number
+          organization_id?: string | null
           percentage?: number
           rank?: number | null
           started_at?: string | null
@@ -147,6 +183,13 @@ export type Database = {
             columns: ["competition_id"]
             isOneToOne: false
             referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_result_summaries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -177,6 +220,7 @@ export type Database = {
           is_active: boolean | null
           max_attempts: number
           name: string
+          organization_id: string | null
           primary_color: string | null
           secondary_color: string | null
           show_detailed_results: boolean | null
@@ -196,6 +240,7 @@ export type Database = {
           is_active?: boolean | null
           max_attempts?: number
           name: string
+          organization_id?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           show_detailed_results?: boolean | null
@@ -215,6 +260,7 @@ export type Database = {
           is_active?: boolean | null
           max_attempts?: number
           name?: string
+          organization_id?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           show_detailed_results?: boolean | null
@@ -222,6 +268,242 @@ export type Database = {
           show_results?: boolean | null
           start_time?: string
           updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_audit_events: {
+        Row: {
+          action: string
+          actor_auth_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          organization_id: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_audit_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_domains: {
+        Row: {
+          created_at: string
+          hostname: string
+          id: string
+          kind: string
+          organization_id: string
+          updated_at: string
+          verification_status: string
+          verification_token: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          hostname: string
+          id?: string
+          kind?: string
+          organization_id: string
+          updated_at?: string
+          verification_status?: string
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          hostname?: string
+          id?: string
+          kind?: string
+          organization_id?: string
+          updated_at?: string
+          verification_status?: string
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_domains_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_memberships: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          legacy_admin_id: string | null
+          legacy_student_id: string | null
+          organization_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legacy_admin_id?: string | null
+          legacy_student_id?: string | null
+          organization_id: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legacy_admin_id?: string | null
+          legacy_student_id?: string | null
+          organization_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          custom_domain: string | null
+          custom_domain_verified_at: string | null
+          favicon_url: string | null
+          id: string
+          logo_url: string | null
+          max_active_students: number
+          max_admins: number
+          max_competitions: number
+          name: string
+          plan_code: string
+          primary_color: string | null
+          secondary_color: string | null
+          slug: string
+          status: string
+          subdomain: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          custom_domain_verified_at?: string | null
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          max_active_students?: number
+          max_admins?: number
+          max_competitions?: number
+          name: string
+          plan_code?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          slug: string
+          status?: string
+          subdomain?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          custom_domain_verified_at?: string | null
+          favicon_url?: string | null
+          id?: string
+          logo_url?: string | null
+          max_active_students?: number
+          max_admins?: number
+          max_competitions?: number
+          name?: string
+          plan_code?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          slug?: string
+          status?: string
+          subdomain?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      platform_roles: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          role: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: string
         }
         Relationships: []
       }
@@ -243,6 +525,7 @@ export type Database = {
           option_c_secondary: string | null
           option_d: string
           option_d_secondary: string | null
+          organization_id: string | null
           question_number: number
           question_text: string
           question_text_secondary: string | null
@@ -265,6 +548,7 @@ export type Database = {
           option_c_secondary?: string | null
           option_d: string
           option_d_secondary?: string | null
+          organization_id?: string | null
           question_number: number
           question_text: string
           question_text_secondary?: string | null
@@ -287,6 +571,7 @@ export type Database = {
           option_c_secondary?: string | null
           option_d?: string
           option_d_secondary?: string | null
+          organization_id?: string | null
           question_number?: number
           question_text?: string
           question_text_secondary?: string | null
@@ -300,6 +585,13 @@ export type Database = {
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "questions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_answers: {
@@ -309,6 +601,7 @@ export type Database = {
           id: string
           is_correct: boolean | null
           is_marked_for_review: boolean | null
+          organization_id: string | null
           question_id: string
           selected_answer: string | null
           student_id: string
@@ -320,6 +613,7 @@ export type Database = {
           id?: string
           is_correct?: boolean | null
           is_marked_for_review?: boolean | null
+          organization_id?: string | null
           question_id: string
           selected_answer?: string | null
           student_id: string
@@ -331,6 +625,7 @@ export type Database = {
           id?: string
           is_correct?: boolean | null
           is_marked_for_review?: boolean | null
+          organization_id?: string | null
           question_id?: string
           selected_answer?: string | null
           student_id?: string
@@ -342,6 +637,13 @@ export type Database = {
             columns: ["competition_id"]
             isOneToOne: false
             referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_answers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -371,6 +673,7 @@ export type Database = {
           id: string
           is_locked: boolean | null
           last_seen: string | null
+          organization_id: string | null
           started_at: string | null
           student_id: string
           submitted_at: string | null
@@ -386,6 +689,7 @@ export type Database = {
           id?: string
           is_locked?: boolean | null
           last_seen?: string | null
+          organization_id?: string | null
           started_at?: string | null
           student_id: string
           submitted_at?: string | null
@@ -401,6 +705,7 @@ export type Database = {
           id?: string
           is_locked?: boolean | null
           last_seen?: string | null
+          organization_id?: string | null
           started_at?: string | null
           student_id?: string
           submitted_at?: string | null
@@ -412,6 +717,13 @@ export type Database = {
             columns: ["competition_id"]
             isOneToOne: false
             referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_competitions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -430,6 +742,7 @@ export type Database = {
           id: string
           name: string
           note: string | null
+          organization_id: string | null
           phone: string
           reviewed_at: string | null
           status: string
@@ -442,6 +755,7 @@ export type Database = {
           id?: string
           name: string
           note?: string | null
+          organization_id?: string | null
           phone: string
           reviewed_at?: string | null
           status?: string
@@ -454,6 +768,7 @@ export type Database = {
           id?: string
           name?: string
           note?: string | null
+          organization_id?: string | null
           phone?: string
           reviewed_at?: string | null
           status?: string
@@ -461,6 +776,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_signup_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_signup_requests_student_id_fkey"
             columns: ["student_id"]
@@ -481,6 +803,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          organization_id: string | null
           password: string
           phone: string
           student_number: number
@@ -497,6 +820,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          organization_id?: string | null
           password: string
           phone: string
           student_number: number
@@ -513,19 +837,29 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          organization_id?: string | null
           password?: string
           phone?: string
           student_number?: number
           updated_at?: string | null
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "students_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       support_tickets: {
         Row: {
           created_at: string
           id: string
           message: string
+          organization_id: string | null
           status: string
           student_name: string
           student_number: string | null
@@ -538,6 +872,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          organization_id?: string | null
           status?: string
           student_name: string
           student_number?: string | null
@@ -550,6 +885,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          organization_id?: string | null
           status?: string
           student_name?: string
           student_number?: string | null
@@ -558,7 +894,15 @@ export type Database = {
           test_name?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -614,6 +958,18 @@ export type Database = {
           window_end: string
           window_start: string
         }[]
+      }
+      has_platform_role: {
+        Args: { p_auth_user_id: string; p_role: string }
+        Returns: boolean
+      }
+      is_org_admin: {
+        Args: { p_auth_user_id: string; p_organization_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { p_auth_user_id: string; p_organization_id: string }
+        Returns: boolean
       }
       recompute_competition_rankings: {
         Args: { p_competition_id: string }
