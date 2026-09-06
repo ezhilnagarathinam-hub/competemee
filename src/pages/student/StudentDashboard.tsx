@@ -22,7 +22,7 @@ interface CompetitionWithStatus extends Competition {
 }
 
 export default function StudentDashboard() {
-  const { studentId } = useStudentAuth();
+  const { studentId, organizationId } = useStudentAuth();
   const [competitions, setCompetitions] = useState<CompetitionWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
@@ -30,11 +30,13 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
 
   const fetchCompetitions = useCallback(async () => {
+    if (!studentId || !organizationId) return;
     try {
       // Fetch all active competitions
       const { data: allComps, error: compError } = await supabase
         .from('competitions')
         .select('*')
+        .eq('organization_id', organizationId)
         .eq('is_active', true)
         .order('date', { ascending: false });
 
@@ -129,7 +131,7 @@ export default function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, organizationId]);
 
   useEffect(() => {
     if (studentId) {

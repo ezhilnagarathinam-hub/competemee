@@ -11,7 +11,7 @@ import { useStudentAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
 export function HelpDialog() {
-  const { studentName, studentId } = useStudentAuth();
+  const { studentName, studentId, organizationId } = useStudentAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
@@ -29,12 +29,14 @@ export function HelpDialog() {
         .from('students')
         .select('student_number, username')
         .eq('id', studentId)
+        .eq('organization_id', organizationId)
         .maybeSingle();
       if (stu) setStudentNumber(String(stu.student_number ?? stu.username ?? ''));
 
       const { data: comps } = await supabase
         .from('competitions')
         .select('id, name')
+        .eq('organization_id', organizationId)
         .order('date', { ascending: false });
       setTests((comps || []) as any);
     })();
@@ -64,6 +66,7 @@ export function HelpDialog() {
       test_name: testLabel,
       message: message.trim(),
       status: 'open',
+      organization_id: organizationId,
     });
     setSending(false);
 
