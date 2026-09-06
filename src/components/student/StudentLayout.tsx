@@ -6,16 +6,16 @@ import { useStudentAuth } from '@/lib/auth';
 import { HelpDialog } from './HelpDialog';
 
 export function StudentLayout() {
-  const { isStudent, studentName, logout, hydrated } = useStudentAuth();
+  const { isStudent, studentName, organizationId, logout, hydrated } = useStudentAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (hydrated && !isStudent) {
+    if (hydrated && (!isStudent || !organizationId)) {
       navigate('/student/login');
     }
-  }, [hydrated, isStudent, navigate]);
+  }, [hydrated, isStudent, organizationId, navigate]);
 
-  if (!hydrated || !isStudent) {
+  if (!hydrated || !isStudent || !organizationId) {
     return null;
   }
 

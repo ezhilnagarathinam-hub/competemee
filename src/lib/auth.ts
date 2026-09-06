@@ -5,8 +5,9 @@ interface AdminAuth {
   isAdmin: boolean;
   adminId: string | null;
   adminName: string | null;
+  organizationId: string | null;
   hydrated: boolean;
-  login: (id: string, name: string) => void;
+  login: (id: string, name: string, organizationId: string | null) => void;
   logout: () => void;
   setHydrated: () => void;
 }
@@ -15,8 +16,9 @@ interface StudentAuth {
   isStudent: boolean;
   studentId: string | null;
   studentName: string | null;
+  organizationId: string | null;
   hydrated: boolean;
-  login: (id: string, name: string) => void;
+  login: (id: string, name: string, organizationId: string | null) => void;
   logout: () => void;
   setHydrated: () => void;
 }
@@ -27,9 +29,10 @@ export const useAdminAuth = create<AdminAuth>()(
       isAdmin: false,
       adminId: null,
       adminName: null,
+      organizationId: null,
       hydrated: false,
-      login: (id, name) => set({ isAdmin: true, adminId: id, adminName: name }),
-      logout: () => set({ isAdmin: false, adminId: null, adminName: null }),
+      login: (id, name, organizationId) => set({ isAdmin: true, adminId: id, adminName: name, organizationId }),
+      logout: () => set({ isAdmin: false, adminId: null, adminName: null, organizationId: null }),
       setHydrated: () => set({ hydrated: true }),
     }),
     {
@@ -38,6 +41,7 @@ export const useAdminAuth = create<AdminAuth>()(
         isAdmin: state.isAdmin,
         adminId: state.adminId,
         adminName: state.adminName,
+        organizationId: state.organizationId,
       }),
       onRehydrateStorage: () => (state) => {
         // Set hydrated true after rehydration completes (or fails)
@@ -55,9 +59,10 @@ export const useStudentAuth = create<StudentAuth>()(
       isStudent: false,
       studentId: null,
       studentName: null,
+      organizationId: null,
       hydrated: false,
-      login: (id, name) => set({ isStudent: true, studentId: id, studentName: name }),
-      logout: () => set({ isStudent: false, studentId: null, studentName: null }),
+      login: (id, name, organizationId) => set({ isStudent: true, studentId: id, studentName: name, organizationId }),
+      logout: () => set({ isStudent: false, studentId: null, studentName: null, organizationId: null }),
       setHydrated: () => set({ hydrated: true }),
     }),
     {
@@ -66,6 +71,7 @@ export const useStudentAuth = create<StudentAuth>()(
         isStudent: state.isStudent,
         studentId: state.studentId,
         studentName: state.studentName,
+        organizationId: state.organizationId,
       }),
       onRehydrateStorage: () => (state) => {
         setTimeout(() => {

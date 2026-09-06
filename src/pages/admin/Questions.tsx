@@ -13,8 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Competition, Question } from '@/types/database';
 import { DownloadQuestionsDialog } from '@/components/admin/DownloadQuestionsDialog';
+import { useAdminAuth } from '@/lib/auth';
 
 export default function Questions() {
+  const { organizationId } = useAdminAuth();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedCompetition, setSelectedCompetition] = useState<string>('');
@@ -55,7 +57,7 @@ export default function Questions() {
 
   useEffect(() => {
     fetchCompetitions();
-  }, []);
+  }, [organizationId]);
 
   useEffect(() => {
     if (selectedCompetition) {
@@ -106,6 +108,7 @@ export default function Questions() {
   }
 
   async function persistQuestionOrder(items: Question[]) {
+    if (!organizationId) return;
     const changed = items
       .map((question, index) => ({
         id: question.id,
@@ -122,6 +125,7 @@ export default function Questions() {
           .from('questions')
           .update({ question_number: question.nextNumber })
           .eq('id', question.id)
+          .eq('organization_id', organizationId)
       )
     );
 
@@ -130,10 +134,12 @@ export default function Questions() {
   }
 
   async function fetchCompetitions() {
+    if (!organizationId) return;
     try {
       const { data, error } = await supabase
         .from('competitions')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('date', { ascending: false });
 
       if (error) throw error;
@@ -149,11 +155,13 @@ export default function Questions() {
   }
 
   async function fetchQuestions(competitionId: string) {
+    if (!organizationId) return;
     try {
       const { data, error } = await supabase
         .from('questions')
         .select('*')
         .eq('competition_id', competitionId)
+        .eq('organization_id', organizationId)
         .order('question_number');
 
       if (error) throw error;
@@ -215,6 +223,7 @@ export default function Questions() {
             image_url: formData.image_url || null,
           })
           .eq('id', editingId)
+          .eq('organization_id', organizationId)
           .select('*')
           .single();
         if (error) throw error;
@@ -236,6 +245,7 @@ export default function Questions() {
             marks: formData.marks,
             explanation: formData.explanation || null,
             competition_id: selectedCompetition,
+            organization_id: organizationId,
             question_number: nextNumber,
             image_url: formData.image_url || null,
           }])
@@ -269,7 +279,7 @@ export default function Questions() {
       queueScrollToQuestion(nextAnchorId);
 
       const remainingQuestions = questions.filter((question) => question.id !== id);
-      const { error: deleteError } = await supabase.from('questions').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('questions').delete().eq('id', id).eq('organization_id', organizationId);
       if (deleteError) throw deleteError;
 
       setQuestions(renumberQuestions(remainingQuestions));
@@ -298,7 +308,7 @@ export default function Questions() {
       queueScrollToQuestion(nextAnchorId);
 
       const remainingQuestions = questions.filter((question) => !ids.includes(question.id));
-      const { error: deleteError } = await supabase.from('questions').delete().in('id', ids);
+      const { error: deleteError } = await supabase.from('questions').delete().in('id', ids).eq('organization_id', organizationId);
       if (deleteError) throw deleteError;
 
       setQuestions(renumberQuestions(remainingQuestions));

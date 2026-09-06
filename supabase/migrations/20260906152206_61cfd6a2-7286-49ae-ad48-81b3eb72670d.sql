@@ -1,0 +1,1 @@
+CREATE POLICY "Public can discover active organizations" ON public.organizations FOR SELECT TO anon, authenticated USING (status = 'active');

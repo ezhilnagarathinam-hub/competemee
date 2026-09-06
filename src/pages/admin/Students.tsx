@@ -15,8 +15,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Student, Competition } from '@/types/database';
 import { softDelete } from '@/lib/undoDelete';
+import { useAdminAuth } from '@/lib/auth';
 
 export default function Students() {
+  const { organizationId } = useAdminAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [studentCompetitions, setStudentCompetitions] = useState<Record<string, any[]>>({});
@@ -56,13 +58,15 @@ export default function Students() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [organizationId]);
 
   async function fetchStudents() {
+    if (!organizationId) return;
     try {
       const { data, error } = await supabase
         .from('students')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('student_number');
 
       if (error) throw error;
@@ -90,10 +94,12 @@ export default function Students() {
   }
 
   async function fetchCompetitions() {
+    if (!organizationId) return;
     try {
       const { data, error } = await supabase
         .from('competitions')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('date', { ascending: false });
 
       if (error) throw error;

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatTimestampShort } from '@/lib/timeFormat';
 import { credentialsMessage, waLink } from '@/lib/whatsapp';
+import { useAdminAuth } from '@/lib/auth';
 
 
 interface SignupRequest {
@@ -32,6 +33,7 @@ interface ApprovedCreds {
 }
 
 export default function Signups() {
+  const { organizationId } = useAdminAuth();
   const [requests, setRequests] = useState<SignupRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
@@ -42,13 +44,15 @@ export default function Signups() {
     fetchRequests();
     const interval = setInterval(() => fetchRequests(true), 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [organizationId]);
 
   async function fetchRequests(silent = false) {
+    if (!organizationId) return;
     try {
       const { data, error } = await (supabase as any)
         .from('student_signup_requests')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       setRequests((data || []) as SignupRequest[]);
@@ -61,6 +65,7 @@ export default function Signups() {
   }
 
   async function approve(req: SignupRequest) {
+    if (!organizationId) return;
     setWorking(req.id);
     try {
       // Guard against duplicates
@@ -68,6 +73,7 @@ export default function Signups() {
         .from('students')
         .select('id, username, password, name, phone')
         .eq('phone', req.phone)
+        .eq('organization_id', organizationId)
         .maybeSingle();
 
       let student = existing as any;
@@ -75,7 +81,7 @@ export default function Signups() {
       if (!student) {
         const { data: created, error: createError } = await (supabase as any)
           .from('students')
-          .insert({ name: req.name, phone: req.phone, exam: req.exam })
+          .insert({ name: req.name, phone: req.phone, exam: req.exam, organization_id: organizationId })
           .select('id, username, password, name, phone')
           .single();
         if (createError) throw createError;
@@ -85,7 +91,8 @@ export default function Signups() {
       const { error: updateError } = await (supabase as any)
         .from('student_signup_requests')
         .update({ status: 'approved', student_id: student.id, reviewed_at: new Date().toISOString() })
-        .eq('id', req.id);
+        .eq('id', req.id)
+        .eq('organization_id', organizationId);
       if (updateError) throw updateError;
 
       setCreds({
@@ -105,13 +112,15 @@ export default function Signups() {
   }
 
   async function reject(req: SignupRequest) {
+    if (!organizationId) return;
     if (!confirm(`Reject the signup request from ${req.name}?`)) return;
     setWorking(req.id);
     try {
       const { error } = await (supabase as any)
         .from('student_signup_requests')
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
-        .eq('id', req.id);
+        .eq('id', req.id)
+        .eq('organization_id', organizationId);
       if (error) throw error;
       toast.success('Request rejected');
       fetchRequests(true);

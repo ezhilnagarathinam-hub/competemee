@@ -56,6 +56,7 @@ export default function StudentSignup() {
         .from('students')
         .select('id')
         .eq('phone', cleanPhone)
+        .eq('organization_id', '00000000-0000-0000-0000-000000000001')
         .maybeSingle();
 
       if (existing) {
@@ -69,6 +70,7 @@ export default function StudentSignup() {
         .select('id, status')
         .eq('phone', cleanPhone)
         .eq('status', 'pending')
+        .eq('organization_id', '00000000-0000-0000-0000-000000000001')
         .maybeSingle();
 
       if (pending) {
@@ -82,6 +84,7 @@ export default function StudentSignup() {
         phone: cleanPhone,
         exam,
         note: note.trim() || null,
+        organization_id: '00000000-0000-0000-0000-000000000001',
       });
 
       if (error) throw error;
