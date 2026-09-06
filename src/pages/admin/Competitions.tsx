@@ -17,8 +17,10 @@ import type { Competition } from '@/types/database';
 import { format } from 'date-fns';
 import { formatTime12 } from '@/lib/timeFormat';
 import { softDelete } from '@/lib/undoDelete';
+import { useAdminAuth } from '@/lib/auth';
 
 export default function Competitions() {
+  const { organizationId } = useAdminAuth();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -70,13 +72,15 @@ export default function Competitions() {
 
   useEffect(() => {
     fetchCompetitions();
-  }, []);
+  }, [organizationId]);
 
   async function fetchCompetitions() {
+    if (!organizationId) return;
     try {
       const { data, error } = await supabase
         .from('competitions')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('date', { ascending: false });
 
       if (error) throw error;
@@ -108,7 +112,8 @@ export default function Competitions() {
         const { error } = await supabase
           .from('competitions')
           .update(submitData)
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('organization_id', organizationId);
         if (error) throw error;
         toast.success('Competition updated successfully');
       } else {
@@ -118,7 +123,7 @@ export default function Competitions() {
         };
         const { error } = await supabase
           .from('competitions')
-          .insert([submitData]);
+          .insert([{ ...submitData, organization_id: organizationId }]);
         if (error) throw error;
         toast.success('Competition created successfully');
       }

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatTimestampShort } from '@/lib/timeFormat';
+import { useAdminAuth } from '@/lib/auth';
 
 interface Ticket {
   id: string;
@@ -19,15 +20,18 @@ interface Ticket {
 }
 
 export default function Support() {
+  const { organizationId } = useAdminAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
 
   async function load() {
+    if (!organizationId) return;
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('support_tickets')
       .select('*')
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
     setLoading(false);
     if (error) {
@@ -40,13 +44,14 @@ export default function Support() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [organizationId]);
 
   async function setStatus(id: string, status: 'open' | 'resolved') {
     const { error } = await (supabase as any)
       .from('support_tickets')
       .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('organization_id', organizationId);
     if (error) {
       toast.error('Could not update');
       return;
