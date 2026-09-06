@@ -26,7 +26,7 @@ export default function AdminLogin() {
       // This should be replaced with Supabase Auth or server-side hashing in a production environment.
       const { data, error } = await supabase
         .from('admins')
-        .select('*')
+        .select('id, name, organization_id')
         .eq('email', email.trim())
         .eq('password_hash', password)
         .maybeSingle();
@@ -34,7 +34,7 @@ export default function AdminLogin() {
       if (error) throw error;
 
       if (data) {
-        login(data.id, data.name);
+        login(data.id, data.name, data.organization_id);
         toast.success('Welcome back, ' + data.name);
         navigate('/admin');
       } else {

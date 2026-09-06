@@ -4,15 +4,15 @@ import { AdminSidebar } from './AdminSidebar';
 import { useAdminAuth } from '@/lib/auth';
 
 export function AdminLayout() {
-  const { isAdmin, hydrated } = useAdminAuth();
+  const { isAdmin, organizationId, hydrated } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (hydrated && !isAdmin) {
+    if (hydrated && (!isAdmin || !organizationId)) {
       navigate('/admin/login');
     }
-  }, [hydrated, isAdmin, navigate]);
+  }, [hydrated, isAdmin, organizationId, navigate]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -26,7 +26,7 @@ export function AdminLayout() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin || !organizationId) {
     return null;
   }
 

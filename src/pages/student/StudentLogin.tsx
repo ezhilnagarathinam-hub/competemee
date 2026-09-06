@@ -26,17 +26,19 @@ export default function StudentLogin() {
       // This should be replaced with Supabase Auth or server-side hashing in a production environment.
       const { data, error } = await supabase
         .from('students')
-        .select('id, name')
+        .select('id, name, organization_id, is_active')
         .eq('username', username.trim())
         .eq('password', password)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (data) {
-        login(data.id, data.name);
+      if (data?.is_active) {
+        login(data.id, data.name, data.organization_id);
         toast.success('Welcome, ' + data.name);
         navigate('/student');
+      } else if (data) {
+        toast.error('Your account is inactive. Please contact the organisation admin.');
       } else {
         toast.error('Invalid username or password');
       }

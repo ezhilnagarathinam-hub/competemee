@@ -31,7 +31,7 @@ const navItems = [
 
 export function AdminSidebar() {
   const location = useLocation();
-  const { adminName, logout } = useAdminAuth();
+  const { adminName, organizationId, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -52,7 +52,7 @@ export function AdminSidebar() {
           </div>
           <div>
             <h1 className="font-bold text-sm text-foreground font-display">COMPETE ME</h1>
-            <p className="text-xs text-muted-foreground">Control Center</p>
+            <p className="text-xs text-muted-foreground">EADREAMSS Control Center</p>
           </div>
         </Link>
       </div>
@@ -80,7 +80,7 @@ export function AdminSidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground truncate font-display">{adminName}</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-xs text-muted-foreground">Organisation Administrator</p>
           </div>
         </div>
         <button 
