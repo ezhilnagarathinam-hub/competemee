@@ -408,6 +408,48 @@ export type Database = {
           },
         ]
       }
+      organization_signup_requests: {
+        Row: {
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          organization_name: string
+          plan_code: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_name: string
+          plan_code?: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_name?: string
+          plan_code?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           contact_email: string | null

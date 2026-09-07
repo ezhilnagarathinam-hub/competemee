@@ -51,12 +51,23 @@ export default function StudentSignup() {
 
     setLoading(true);
     try {
+      const { data: organization, error: organizationError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', 'eadreamss')
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (organizationError || !organization) {
+        throw organizationError || new Error('Organization is unavailable');
+      }
+
       // Already a player with this phone?
       const { data: existing } = await supabase
         .from('students')
         .select('id')
         .eq('phone', cleanPhone)
-        .eq('organization_id', '00000000-0000-0000-0000-000000000001')
+        .eq('organization_id', organization.id)
         .maybeSingle();
 
       if (existing) {
@@ -70,7 +81,7 @@ export default function StudentSignup() {
         .select('id, status')
         .eq('phone', cleanPhone)
         .eq('status', 'pending')
-        .eq('organization_id', '00000000-0000-0000-0000-000000000001')
+        .eq('organization_id', organization.id)
         .maybeSingle();
 
       if (pending) {
@@ -84,7 +95,7 @@ export default function StudentSignup() {
         phone: cleanPhone,
         exam,
         note: note.trim() || null,
-        organization_id: '00000000-0000-0000-0000-000000000001',
+        organization_id: organization.id,
       });
 
       if (error) throw error;
