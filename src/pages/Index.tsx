@@ -6,6 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function Index() {
   return (
     <div className="min-h-screen bg-background">
+      <nav className="absolute inset-x-0 top-0 z-20">
+        <div className="container mx-auto flex items-center justify-end gap-2 px-4 py-5">
+          <Link to="/student/login"><Button variant="ghost" className="text-foreground">Student login</Button></Link>
+          <Link to="/organization"><Button variant="outline" className="border-primary/40">For organizations <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
+        </div>
+      </nav>
       {/* Hero Section */}
       <header className="relative overflow-hidden min-h-[80vh] flex items-center">
         {/* Animated background elements */}
@@ -15,7 +21,7 @@ export default function Index() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl" />
         </div>
         
-        <div className="container mx-auto px-4 py-20 relative">
+        <div className="container mx-auto px-4 pb-20 pt-28 relative">
           <div className="text-center max-w-3xl mx-auto animate-fade-in">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl gradient-primary shadow-neon mb-8 energy-pulse">
               <Zap className="w-12 h-12 text-primary-foreground animate-glow" />

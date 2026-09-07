@@ -8,6 +8,7 @@ import AnalyticsLoader from '@/components/AnalyticsLoader';
 // Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import OrganizationSignup from "./pages/OrganizationSignup";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -40,6 +41,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/organization" element={<OrganizationSignup />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
