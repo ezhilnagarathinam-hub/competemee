@@ -20,6 +20,7 @@ const QUESTION_SCHEMA = {
           option_d: { type: 'string' },
           correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
           explanation: { type: 'string' },
+          source_question_number: { type: 'integer' },
 
           // Bilingual pair (optional). When the source paper has each question
           // in two languages (English + Tamil OR English + Hindi), the AI must
@@ -88,14 +89,18 @@ Deno.serve(async (req) => {
       results.push(parsed as any[]);
     }
 
-    let questions = mergeSplitQuestions(results.flat());
+    const expectedCount = estimateQuestionCount(text);
+    let questions = mergeSplitQuestions(results.flat())
+      .map(sanitizeQuestion)
+      .filter((q): q is any => !!q && q.question_text && q.option_a && q.option_b && q.option_c && q.option_d);
+
+    questions = dedupeQuestions(questions);
+    // Numbered papers give us a reliable upper bound. This is a final safety
+    // net for a model that emits an extra fragment after the real last item.
+    questions = orderAndLimitQuestions(questions, expectedCount);
 
     // Sanity-clean every question so options can NEVER be empty just because
     // the model accidentally split them across two records.
-    questions = questions
-      .map(sanitizeQuestion)
-      .filter((q) => q && q.question_text && q.option_a && q.option_b && q.option_c && q.option_d);
-
     if (questions.length === 0) {
       return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), {
         status: 422,
@@ -129,6 +134,7 @@ function looksLikeFragment(q: any): boolean {
   if (t.length === 0) return true;
   // pure numbering / option label leftovers
   if (/^(?:[A-Da-d1-4][\).\.]?|\(?[A-Da-d1-4]\)|Q?\.?\s*\d+[\).:-]?)$/.test(t)) return true;
+  if (/^(?:option\s*)?[A-Da-d1-4][\).:\-]\s+/i.test(t) && optionCount(q) >= 3) return true;
   return t.length < 12 && optionCount(q) >= 3;
 }
 
@@ -173,12 +179,20 @@ function mergeSplitQuestions(list: any[]): any[] {
     out.push(cur);
   }
 
-  // Drop exact duplicates (same question text + first option) that chunk
-  // overlaps can produce.
+  return out;
+}
+
+function normalizeKey(value: unknown): string {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function dedupeQuestions(list: any[]): any[] {
   const seen = new Set<string>();
-  return out.filter((q) => {
-    const key = (String(q.question_text || '').trim() + '||' + String(q.option_a || '').trim()).toLowerCase();
-    if (!key.trim() || seen.has(key)) return seen.has(key) ? false : true;
+  return list.filter((q) => {
+    const textKey = normalizeKey(q.question_text);
+    const optionKey = normalizeKey(q.option_a);
+    const key = `${textKey}||${optionKey}`;
+    if (!textKey || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
@@ -187,14 +201,17 @@ function mergeSplitQuestions(list: any[]): any[] {
 function sanitizeQuestion(q: any): any | null {
   if (!q || typeof q !== 'object') return null;
   const out: any = {
-    question_text: String(q.question_text || '').trim(),
-    option_a: String(q.option_a || '').trim(),
-    option_b: String(q.option_b || '').trim(),
-    option_c: String(q.option_c || '').trim(),
-    option_d: String(q.option_d || '').trim(),
+    question_text: stripNumbering(String(q.question_text || '').trim()),
+    option_a: stripOptionLabel(String(q.option_a || '').trim()),
+    option_b: stripOptionLabel(String(q.option_b || '').trim()),
+    option_c: stripOptionLabel(String(q.option_c || '').trim()),
+    option_d: stripOptionLabel(String(q.option_d || '').trim()),
     correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : null,
     explanation: q.explanation ? String(q.explanation).trim() : null,
   };
+  if (Number.isInteger(q.source_question_number)) {
+    out.source_question_number = q.source_question_number;
+  }
 
   const sec = String(q.secondary_language || '').toLowerCase();
   if (sec === 'tamil' || sec === 'hindi') {
@@ -206,11 +223,11 @@ function sanitizeQuestion(q: any): any | null {
       (q.option_d_secondary || '').trim();
     if (hasSecondary) {
       out.secondary_language = sec;
-      out.question_text_secondary = String(q.question_text_secondary).trim();
-      out.option_a_secondary = String(q.option_a_secondary).trim();
-      out.option_b_secondary = String(q.option_b_secondary).trim();
-      out.option_c_secondary = String(q.option_c_secondary).trim();
-      out.option_d_secondary = String(q.option_d_secondary).trim();
+      out.question_text_secondary = stripNumbering(String(q.question_text_secondary).trim());
+      out.option_a_secondary = stripOptionLabel(String(q.option_a_secondary).trim());
+      out.option_b_secondary = stripOptionLabel(String(q.option_b_secondary).trim());
+      out.option_c_secondary = stripOptionLabel(String(q.option_c_secondary).trim());
+      out.option_d_secondary = stripOptionLabel(String(q.option_d_secondary).trim());
       if (q.explanation_secondary) {
         out.explanation_secondary = String(q.explanation_secondary).trim();
       }
@@ -218,6 +235,17 @@ function sanitizeQuestion(q: any): any | null {
   }
 
   return out;
+}
+
+function stripNumbering(value: string): string {
+  return value
+    .replace(/^\s*(?:Q(?:uestion)?\s*\.?\s*(?:No\.?)?\s*)?\(?\d{1,3}\)?\s*[\).:\-–]\s*/i, '')
+    .replace(/^\s*(?:Passage|Case|Comprehension)\s*(?:No\.?)?\s*\d{1,3}\s*[:.\-–]?\s*/i, '')
+    .trim();
+}
+
+function stripOptionLabel(value: string): string {
+  return value.replace(/^\s*\(?[A-Da-d1-4]\)?\s*[\).:\-–]?\s+/, '').trim();
 }
 
 function stripFences(s: string): string {
@@ -286,12 +314,17 @@ function extractQuestions(raw: string): any[] {
 // "options in a separate record" errors.
 function splitIntoQuestionBlocks(text: string): string[] {
   const lines = text.split(/\r?\n/);
-  const isStart = (line: string) =>
-    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
   const blocks: string[] = [];
   let buf: string[] = [];
+
+  // Do not split on every numbered line: statement questions commonly contain
+  // their own "1." / "2." lines. A new question is accepted only after the
+  // current block already contains a complete option set.
+  const isQuestionMarker = (line: string) =>
+    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
+
   for (const line of lines) {
-    if (isStart(line) && buf.join('\n').trim().length > 0) {
+    if (isQuestionMarker(line) && hasCompleteOptions(buf.join('\n')) && buf.join('\n').trim().length > 0) {
       blocks.push(buf.join('\n'));
       buf = [];
     }
@@ -300,6 +333,22 @@ function splitIntoQuestionBlocks(text: string): string[] {
   if (buf.join('\n').trim().length > 0) blocks.push(buf.join('\n'));
   if (blocks.length <= 1) return text.split(/\n\s*\n/);
   return blocks;
+}
+
+function hasCompleteOptions(text: string): boolean {
+  const letterOptions = text.match(/^\s*\(?[A-Da-d]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+  if (letterOptions.length >= 4) return true;
+  const numberedOptions = text.match(/^\s*\(?[1-4]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+  return letterOptions.length === 0 && numberedOptions.length >= 4;
+}
+
+function estimateQuestionCount(text: string): number | null {
+  const numbers = [...text.matchAll(/^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?([0-9]{1,3})\)?\s*[\).:\-]\s+\S/gim)]
+    .map((match) => Number(match[1]))
+    .filter((number) => number >= 1 && number <= 500);
+  if (numbers.length < 2) return null;
+  const max = Math.max(...numbers);
+  return max >= 2 ? max : null;
 }
 
 function splitIntoChunks(text: string, maxLen: number): string[] {
@@ -312,9 +361,11 @@ function splitIntoChunks(text: string, maxLen: number): string[] {
       chunks.push(buf);
       buf = '';
     }
+    // Keep one question intact even if it is unusually long. Splitting a
+    // question mid-options is what creates phantom records.
     if (b.length > maxLen) {
       if (buf) { chunks.push(buf); buf = ''; }
-      for (let i = 0; i < b.length; i += maxLen) chunks.push(b.substring(i, i + maxLen));
+      chunks.push(b);
       continue;
     }
     buf += (buf ? '\n\n' : '') + b;
@@ -333,6 +384,8 @@ CRITICAL RULES:
 3. KEEP numbering that is part of question content (statement numerals "I.", "II.", "1.", "2." inside multi-statement questions; numbers inside sentences like "In 1947, ...").
 4. For passage-based questions, include the passage text together with each related question inside question_text so context is preserved.
 5. Strip the option label prefix ("A.", "A)", "(A)", "1.") from the option value itself.
+ 6. Record the printed question number in source_question_number. Do not use statement
+    numbers (I/II/1/2 inside the question) as the question number.
 
 BILINGUAL DETECTION (very important):
 - If the SAME question is given in TWO languages (English+Tamil OR English+Hindi), pair them as ONE record:
@@ -397,6 +450,24 @@ ${text}`;
     console.error('parseChunk failed:', e);
     return await parseChunkFallback(text, apiKey);
   }
+}
+
+function orderAndLimitQuestions(list: any[], expectedCount: number | null): any[] {
+  if (!expectedCount || list.length <= expectedCount) return list;
+  const numbered = list.filter((q) => Number.isInteger(q?.source_question_number));
+  if (numbered.length >= expectedCount * 0.6) {
+    const bestByNumber = new Map<number, any>();
+    for (const question of numbered) {
+      const number = Number(question.source_question_number);
+      if (number < 1 || number > expectedCount || !bestByNumber.has(number)) {
+        if (number >= 1 && number <= expectedCount) bestByNumber.set(number, question);
+      }
+    }
+    const ordered = [...bestByNumber.entries()].sort(([a], [b]) => a - b).map(([, q]) => q);
+    const remaining = list.filter((q) => !Number.isInteger(q?.source_question_number));
+    return [...ordered, ...remaining].slice(0, expectedCount);
+  }
+  return list.slice(0, expectedCount);
 }
 
 async function parseChunkFallback(text: string, apiKey: string): Promise<any[]> {

@@ -20,6 +20,7 @@ const QUESTION_SCHEMA = {
           option_d: { type: 'string' },
           correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
           explanation: { type: 'string' },
+          source_question_number: { type: 'integer' },
           question_text_secondary: { type: 'string' },
           option_a_secondary: { type: 'string' },
           option_b_secondary: { type: 'string' },
@@ -45,6 +46,7 @@ Rules:
 - Put the correct answer letter in correct_answer when it is marked, given in an answer key, or stated in the explanation.
 - Put the explanation / solution text in "explanation" (never inside the question or an option).
 - Strip leading question numbers ("1.", "Q1)", "Question 5:", "Q.No.7", "(12)") and labels like "Passage 1", "Case 3:". Keep statement numerals (I., II., 1., 2.) that are part of the question body.
+- Record the printed question number in source_question_number. Never use statement numerals inside the question body.
 - Preserve Tamil / Hindi / math characters exactly.
 - If the paper repeats each question in two languages (English + Tamil, or English + Hindi), put the English version in the primary fields, the other language in the *_secondary fields, and set secondary_language to "tamil" or "hindi".
 - Do not invent questions. Return ONLY JSON matching the schema.`;
@@ -165,9 +167,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    const expectedCount = estimateQuestionCountFromResults(questions);
     questions = mergeSplitQuestions(questions)
       .map(sanitizeQuestion)
       .filter((q): q is any => !!q && !!q.question_text && !!q.option_a && !!q.option_b && !!q.option_c && !!q.option_d);
+
+    questions = dedupeQuestions(questions);
+    questions = orderAndLimitQuestions(questions, expectedCount);
 
     if (questions.length === 0) {
       return json({ error: 'No complete questions could be extracted from this file.' }, 422);
@@ -278,16 +284,42 @@ function extractRawText(bytes: Uint8Array): string {
 }
 
 function splitIntoChunks(text: string, size: number): string[] {
-  const boundary = /(?=^\s*(?:Q(?:uestion)?\.?\s*)?\d{1,3}\s*[\).:-])/gim;
-  const blocks = text.split(boundary).filter((b) => b.trim().length > 0);
+  const lines = text.split(/\r?\n/);
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+  const isQuestionMarker = (line: string) =>
+    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
+  const hasCompleteOptions = (value: string) => {
+    const letters = value.match(/^\s*\(?[A-Da-d]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+    const numbers = value.match(/^\s*\(?[1-4]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+    return letters.length >= 4 || (letters.length === 0 && numbers.length >= 4);
+  };
+
+  for (const line of lines) {
+    const current = currentBlock.join('\n');
+    if (isQuestionMarker(line) && current.trim() && hasCompleteOptions(current)) {
+      blocks.push(current);
+      currentBlock = [];
+    }
+    currentBlock.push(line);
+  }
+  if (currentBlock.join('\n').trim()) blocks.push(currentBlock.join('\n'));
+  if (blocks.length <= 1) return [text];
+
   const chunks: string[] = [];
   let current = '';
   for (const block of blocks) {
-    if (current.length + block.length > size && current.trim().length > 0) {
+    if (current.length + block.length + 2 > size && current.trim().length > 0) {
       chunks.push(current);
       current = '';
     }
-    current += block;
+    // Never split a question in the middle of its options.
+    if (block.length > size) {
+      if (current) chunks.push(current);
+      current = block;
+    } else {
+      current += (current ? '\n\n' : '') + block;
+    }
   }
   if (current.trim().length > 0) chunks.push(current);
   return chunks.length > 0 ? chunks : [text];
@@ -340,13 +372,48 @@ function mergeSplitQuestions(list: any[]): any[] {
     out.push(cur);
   }
 
+  return out;
+}
+
+function normalizeKey(value: unknown): string {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function dedupeQuestions(list: any[]): any[] {
   const seen = new Set<string>();
-  return out.filter((q) => {
-    const key = (String(q.question_text || '').trim() + '||' + String(q.option_a || '').trim()).toLowerCase();
-    if (!key.trim() || seen.has(key)) return false;
+  return list.filter((q) => {
+    const textKey = normalizeKey(q.question_text);
+    const key = `${textKey}||${normalizeKey(q.option_a)}`;
+    if (!textKey || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function estimateQuestionCountFromResults(list: any[]): number | null {
+  const numbers = list
+    .map((q) => String(q?.question_text || '').match(/^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?([0-9]{1,3})\)?\s*[\).:\-]\s+/i)?.[1])
+    .map((value) => Number(value))
+    .filter((value) => value >= 2 && value <= 500);
+  return numbers.length >= 2 ? Math.max(...numbers) : null;
+}
+
+function orderAndLimitQuestions(list: any[], expectedCount: number | null): any[] {
+  if (!expectedCount || list.length <= expectedCount) return list;
+  const numbered = list.filter((q) => Number.isInteger(q?.source_question_number));
+  if (numbered.length >= expectedCount * 0.6) {
+    const bestByNumber = new Map<number, any>();
+    for (const question of numbered) {
+      const number = Number(question.source_question_number);
+      if (number >= 1 && number <= expectedCount && !bestByNumber.has(number)) {
+        bestByNumber.set(number, question);
+      }
+    }
+    const ordered = [...bestByNumber.entries()].sort(([a], [b]) => a - b).map(([, q]) => q);
+    const remaining = list.filter((q) => !Number.isInteger(q?.source_question_number));
+    return [...ordered, ...remaining].slice(0, expectedCount);
+  }
+  return list.slice(0, expectedCount);
 }
 
 function stripNumbering(s: string): string {
@@ -372,6 +439,9 @@ function sanitizeQuestion(q: any): any | null {
     explanation: q.explanation ? String(q.explanation).trim() : null,
     marks: 1,
   };
+  if (Number.isInteger(q.source_question_number)) {
+    out.source_question_number = q.source_question_number;
+  }
 
   const sec = String(q.secondary_language || '').toLowerCase();
   if (sec === 'tamil' || sec === 'hindi') {
