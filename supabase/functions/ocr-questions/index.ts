@@ -165,9 +165,15 @@ Deno.serve(async (req) => {
       }
     }
 
+    const expectedCount = estimateQuestionCountFromResults(questions);
     questions = mergeSplitQuestions(questions)
       .map(sanitizeQuestion)
       .filter((q): q is any => !!q && !!q.question_text && !!q.option_a && !!q.option_b && !!q.option_c && !!q.option_d);
+
+    questions = dedupeQuestions(questions);
+    if (expectedCount && questions.length > expectedCount) {
+      questions = questions.slice(0, expectedCount);
+    }
 
     if (questions.length === 0) {
       return json({ error: 'No complete questions could be extracted from this file.' }, 422);
@@ -340,13 +346,30 @@ function mergeSplitQuestions(list: any[]): any[] {
     out.push(cur);
   }
 
+  return out;
+}
+
+function normalizeKey(value: unknown): string {
+  return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function dedupeQuestions(list: any[]): any[] {
   const seen = new Set<string>();
-  return out.filter((q) => {
-    const key = (String(q.question_text || '').trim() + '||' + String(q.option_a || '').trim()).toLowerCase();
-    if (!key.trim() || seen.has(key)) return false;
+  return list.filter((q) => {
+    const textKey = normalizeKey(q.question_text);
+    const key = `${textKey}||${normalizeKey(q.option_a)}`;
+    if (!textKey || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function estimateQuestionCountFromResults(list: any[]): number | null {
+  const numbers = list
+    .map((q) => String(q?.question_text || '').match(/^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?([0-9]{1,3})\)?\s*[\).:\-]\s+/i)?.[1])
+    .map((value) => Number(value))
+    .filter((value) => value >= 2 && value <= 500);
+  return numbers.length >= 2 ? Math.max(...numbers) : null;
 }
 
 function stripNumbering(s: string): string {
