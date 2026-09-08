@@ -452,6 +452,7 @@ export default function Questions() {
       for (const q of parsedQs) {
         const nextNumber = questions.length + added + 1;
         const payload: any = {
+          organization_id: organizationId,
           competition_id: selectedCompetition,
           question_number: nextNumber,
           question_text: q.question_text || '',
@@ -655,6 +656,7 @@ export default function Questions() {
           .from('questions')
           .insert([{
             competition_id: selectedCompetition,
+            organization_id: organizationId,
             question_number: nextNumber,
             question_text: q.question_text,
             option_a: q.option_a || '',

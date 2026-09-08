@@ -20,6 +20,7 @@ const QUESTION_SCHEMA = {
           option_d: { type: 'string' },
           correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
           explanation: { type: 'string' },
+          source_question_number: { type: 'integer' },
 
           // Bilingual pair (optional). When the source paper has each question
           // in two languages (English + Tamil OR English + Hindi), the AI must
@@ -96,9 +97,7 @@ Deno.serve(async (req) => {
     questions = dedupeQuestions(questions);
     // Numbered papers give us a reliable upper bound. This is a final safety
     // net for a model that emits an extra fragment after the real last item.
-    if (expectedCount && questions.length > expectedCount) {
-      questions = questions.slice(0, expectedCount);
-    }
+    questions = orderAndLimitQuestions(questions, expectedCount);
 
     // Sanity-clean every question so options can NEVER be empty just because
     // the model accidentally split them across two records.
@@ -382,6 +381,8 @@ CRITICAL RULES:
 3. KEEP numbering that is part of question content (statement numerals "I.", "II.", "1.", "2." inside multi-statement questions; numbers inside sentences like "In 1947, ...").
 4. For passage-based questions, include the passage text together with each related question inside question_text so context is preserved.
 5. Strip the option label prefix ("A.", "A)", "(A)", "1.") from the option value itself.
+ 6. Record the printed question number in source_question_number. Do not use statement
+    numbers (I/II/1/2 inside the question) as the question number.
 
 BILINGUAL DETECTION (very important):
 - If the SAME question is given in TWO languages (English+Tamil OR English+Hindi), pair them as ONE record:
@@ -446,6 +447,24 @@ ${text}`;
     console.error('parseChunk failed:', e);
     return await parseChunkFallback(text, apiKey);
   }
+}
+
+function orderAndLimitQuestions(list: any[], expectedCount: number | null): any[] {
+  if (!expectedCount || list.length <= expectedCount) return list;
+  const numbered = list.filter((q) => Number.isInteger(q?.source_question_number));
+  if (numbered.length >= expectedCount * 0.6) {
+    const bestByNumber = new Map<number, any>();
+    for (const question of numbered) {
+      const number = Number(question.source_question_number);
+      if (number < 1 || number > expectedCount || !bestByNumber.has(number)) {
+        if (number >= 1 && number <= expectedCount) bestByNumber.set(number, question);
+      }
+    }
+    const ordered = [...bestByNumber.entries()].sort(([a], [b]) => a - b).map(([, q]) => q);
+    const remaining = list.filter((q) => !Number.isInteger(q?.source_question_number));
+    return [...ordered, ...remaining].slice(0, expectedCount);
+  }
+  return list.slice(0, expectedCount);
 }
 
 async function parseChunkFallback(text: string, apiKey: string): Promise<any[]> {

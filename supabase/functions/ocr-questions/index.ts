@@ -20,6 +20,7 @@ const QUESTION_SCHEMA = {
           option_d: { type: 'string' },
           correct_answer: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
           explanation: { type: 'string' },
+          source_question_number: { type: 'integer' },
           question_text_secondary: { type: 'string' },
           option_a_secondary: { type: 'string' },
           option_b_secondary: { type: 'string' },
@@ -45,6 +46,7 @@ Rules:
 - Put the correct answer letter in correct_answer when it is marked, given in an answer key, or stated in the explanation.
 - Put the explanation / solution text in "explanation" (never inside the question or an option).
 - Strip leading question numbers ("1.", "Q1)", "Question 5:", "Q.No.7", "(12)") and labels like "Passage 1", "Case 3:". Keep statement numerals (I., II., 1., 2.) that are part of the question body.
+- Record the printed question number in source_question_number. Never use statement numerals inside the question body.
 - Preserve Tamil / Hindi / math characters exactly.
 - If the paper repeats each question in two languages (English + Tamil, or English + Hindi), put the English version in the primary fields, the other language in the *_secondary fields, and set secondary_language to "tamil" or "hindi".
 - Do not invent questions. Return ONLY JSON matching the schema.`;
@@ -171,9 +173,7 @@ Deno.serve(async (req) => {
       .filter((q): q is any => !!q && !!q.question_text && !!q.option_a && !!q.option_b && !!q.option_c && !!q.option_d);
 
     questions = dedupeQuestions(questions);
-    if (expectedCount && questions.length > expectedCount) {
-      questions = questions.slice(0, expectedCount);
-    }
+    questions = orderAndLimitQuestions(questions, expectedCount);
 
     if (questions.length === 0) {
       return json({ error: 'No complete questions could be extracted from this file.' }, 422);
@@ -370,6 +370,24 @@ function estimateQuestionCountFromResults(list: any[]): number | null {
     .map((value) => Number(value))
     .filter((value) => value >= 2 && value <= 500);
   return numbers.length >= 2 ? Math.max(...numbers) : null;
+}
+
+function orderAndLimitQuestions(list: any[], expectedCount: number | null): any[] {
+  if (!expectedCount || list.length <= expectedCount) return list;
+  const numbered = list.filter((q) => Number.isInteger(q?.source_question_number));
+  if (numbered.length >= expectedCount * 0.6) {
+    const bestByNumber = new Map<number, any>();
+    for (const question of numbered) {
+      const number = Number(question.source_question_number);
+      if (number >= 1 && number <= expectedCount && !bestByNumber.has(number)) {
+        bestByNumber.set(number, question);
+      }
+    }
+    const ordered = [...bestByNumber.entries()].sort(([a], [b]) => a - b).map(([, q]) => q);
+    const remaining = list.filter((q) => !Number.isInteger(q?.source_question_number));
+    return [...ordered, ...remaining].slice(0, expectedCount);
+  }
+  return list.slice(0, expectedCount);
 }
 
 function stripNumbering(s: string): string {
