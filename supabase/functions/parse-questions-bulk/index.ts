@@ -209,6 +209,9 @@ function sanitizeQuestion(q: any): any | null {
     correct_answer: ['A', 'B', 'C', 'D'].includes(q.correct_answer) ? q.correct_answer : null,
     explanation: q.explanation ? String(q.explanation).trim() : null,
   };
+  if (Number.isInteger(q.source_question_number)) {
+    out.source_question_number = q.source_question_number;
+  }
 
   const sec = String(q.secondary_language || '').toLowerCase();
   if (sec === 'tamil' || sec === 'hindi') {

@@ -284,16 +284,42 @@ function extractRawText(bytes: Uint8Array): string {
 }
 
 function splitIntoChunks(text: string, size: number): string[] {
-  const boundary = /(?=^\s*(?:Q(?:uestion)?\.?\s*)?\d{1,3}\s*[\).:-])/gim;
-  const blocks = text.split(boundary).filter((b) => b.trim().length > 0);
+  const lines = text.split(/\r?\n/);
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+  const isQuestionMarker = (line: string) =>
+    /^\s*(?:Q(?:uestion)?\s*\.?\s*)?\(?\d{1,3}\)?\s*[\).:\-]\s+\S/.test(line);
+  const hasCompleteOptions = (value: string) => {
+    const letters = value.match(/^\s*\(?[A-Da-d]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+    const numbers = value.match(/^\s*\(?[1-4]\)?\s*[\).:\-]\s+\S.+$/gim) || [];
+    return letters.length >= 4 || (letters.length === 0 && numbers.length >= 4);
+  };
+
+  for (const line of lines) {
+    const current = currentBlock.join('\n');
+    if (isQuestionMarker(line) && current.trim() && hasCompleteOptions(current)) {
+      blocks.push(current);
+      currentBlock = [];
+    }
+    currentBlock.push(line);
+  }
+  if (currentBlock.join('\n').trim()) blocks.push(currentBlock.join('\n'));
+  if (blocks.length <= 1) return [text];
+
   const chunks: string[] = [];
   let current = '';
   for (const block of blocks) {
-    if (current.length + block.length > size && current.trim().length > 0) {
+    if (current.length + block.length + 2 > size && current.trim().length > 0) {
       chunks.push(current);
       current = '';
     }
-    current += block;
+    // Never split a question in the middle of its options.
+    if (block.length > size) {
+      if (current) chunks.push(current);
+      current = block;
+    } else {
+      current += (current ? '\n\n' : '') + block;
+    }
   }
   if (current.trim().length > 0) chunks.push(current);
   return chunks.length > 0 ? chunks : [text];
@@ -413,6 +439,9 @@ function sanitizeQuestion(q: any): any | null {
     explanation: q.explanation ? String(q.explanation).trim() : null,
     marks: 1,
   };
+  if (Number.isInteger(q.source_question_number)) {
+    out.source_question_number = q.source_question_number;
+  }
 
   const sec = String(q.secondary_language || '').toLowerCase();
   if (sec === 'tamil' || sec === 'hindi') {
