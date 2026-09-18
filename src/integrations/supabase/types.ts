@@ -1090,6 +1090,18 @@ export type Database = {
         Args: { p_competition_id: string; p_student_id: string }
         Returns: undefined
       }
+      register_student_for_competition: {
+        Args: {
+          p_batch_id: string
+          p_competition_id: string
+          p_exam: string
+          p_name: string
+          p_note?: string
+          p_organization_id: string
+          p_phone: string
+        }
+        Returns: Json
+      }
       server_now: { Args: never; Returns: string }
       start_new_attempt: {
         Args: { p_competition_id: string; p_student_id: string }
