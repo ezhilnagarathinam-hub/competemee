@@ -1,0 +1,1 @@
+ALTER FUNCTION public.register_student_for_competition(uuid, uuid, uuid, text, text, text, text) SECURITY INVOKER;
