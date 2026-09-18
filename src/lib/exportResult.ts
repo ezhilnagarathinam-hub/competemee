@@ -49,11 +49,11 @@ export async function downloadResultPDF(sheet: ResultSheet, filename?: string) {
   let y = 40;
 
   const escapeHtml = (value: unknown) => String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
   const renderBlock = async (html: string) => {
     const host = document.createElement('div');
