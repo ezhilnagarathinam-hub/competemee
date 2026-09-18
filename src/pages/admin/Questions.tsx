@@ -23,6 +23,7 @@ export default function Questions() {
   const [, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorLanguage, setEditorLanguage] = useState<'primary' | 'secondary'>('primary');
   const [uploading, setUploading] = useState(false);
   const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
   const [ocrProcessing, setOcrProcessing] = useState(false);
@@ -53,6 +54,13 @@ export default function Questions() {
     correct_answer: 'A' as 'A' | 'B' | 'C' | 'D',
     marks: 1,
     explanation: '',
+    question_text_secondary: '',
+    option_a_secondary: '',
+    option_b_secondary: '',
+    option_c_secondary: '',
+    option_d_secondary: '',
+    explanation_secondary: '',
+    secondary_language: null as 'tamil' | 'hindi' | null,
   });
 
   useEffect(() => {
@@ -221,6 +229,13 @@ export default function Questions() {
             marks: formData.marks,
             explanation: formData.explanation || null,
             image_url: formData.image_url || null,
+            question_text_secondary: formData.question_text_secondary || null,
+            option_a_secondary: formData.option_a_secondary || null,
+            option_b_secondary: formData.option_b_secondary || null,
+            option_c_secondary: formData.option_c_secondary || null,
+            option_d_secondary: formData.option_d_secondary || null,
+            explanation_secondary: formData.explanation_secondary || null,
+            secondary_language: formData.secondary_language,
           })
           .eq('id', editingId)
           .eq('organization_id', organizationId)
@@ -248,6 +263,13 @@ export default function Questions() {
             organization_id: organizationId,
             question_number: nextNumber,
             image_url: formData.image_url || null,
+            question_text_secondary: formData.question_text_secondary || null,
+            option_a_secondary: formData.option_a_secondary || null,
+            option_b_secondary: formData.option_b_secondary || null,
+            option_c_secondary: formData.option_c_secondary || null,
+            option_d_secondary: formData.option_d_secondary || null,
+            explanation_secondary: formData.explanation_secondary || null,
+            secondary_language: formData.secondary_language,
           }])
           .select('*')
           .single();
@@ -359,8 +381,16 @@ export default function Questions() {
       correct_answer: q.correct_answer,
       marks: q.marks,
       explanation: (q as any).explanation || '',
+      question_text_secondary: q.question_text_secondary || '',
+      option_a_secondary: q.option_a_secondary || '',
+      option_b_secondary: q.option_b_secondary || '',
+      option_c_secondary: q.option_c_secondary || '',
+      option_d_secondary: q.option_d_secondary || '',
+      explanation_secondary: q.explanation_secondary || '',
+      secondary_language: q.secondary_language || null,
     });
     setEditingId(null);
+    setEditorLanguage('primary');
     setDialogOpen(true);
     toast.info('Question copied — save to add as new');
   }
@@ -506,9 +536,17 @@ export default function Questions() {
       correct_answer: 'A',
       marks: m,
       explanation: '',
+      question_text_secondary: '',
+      option_a_secondary: '',
+      option_b_secondary: '',
+      option_c_secondary: '',
+      option_d_secondary: '',
+      explanation_secondary: '',
+      secondary_language: null,
     });
     setMarksText(String(m));
     setEditingId(null);
+    setEditorLanguage('primary');
   }
 
   async function handleDefaultMarksChange(value: number) {
@@ -576,9 +614,17 @@ export default function Questions() {
       correct_answer: q.correct_answer,
       marks: Number(q.marks),
       explanation: (q as any).explanation || '',
+      question_text_secondary: q.question_text_secondary || '',
+      option_a_secondary: q.option_a_secondary || '',
+      option_b_secondary: q.option_b_secondary || '',
+      option_c_secondary: q.option_c_secondary || '',
+      option_d_secondary: q.option_d_secondary || '',
+      explanation_secondary: q.explanation_secondary || '',
+      secondary_language: q.secondary_language || null,
     });
     setMarksText(String(q.marks));
     setEditingId(q.id);
+    setEditorLanguage('primary');
     setDialogOpen(true);
   }
 
@@ -865,34 +911,65 @@ export default function Questions() {
                 <DialogTitle className="font-display">{editingId ? 'EDIT QUESTION' : 'ADD NEW QUESTION'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {editingId && formData.secondary_language && (
+                  <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-muted/40 p-1" role="group" aria-label="Question language">
+                    <Button
+                      type="button"
+                      variant={editorLanguage === 'primary' ? 'default' : 'ghost'}
+                      onClick={() => setEditorLanguage('primary')}
+                      className="w-full"
+                    >
+                      English
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={editorLanguage === 'secondary' ? 'default' : 'ghost'}
+                      onClick={() => setEditorLanguage('secondary')}
+                      className="w-full capitalize"
+                    >
+                      {formData.secondary_language}
+                    </Button>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="question">Question (Tamil/English supported)</Label>
+                  <Label htmlFor="question">
+                    {editorLanguage === 'secondary' && formData.secondary_language
+                      ? `${formData.secondary_language === 'tamil' ? 'Tamil' : 'Hindi'} Question`
+                      : 'English Question'}
+                  </Label>
                   <Textarea
                     id="question"
-                    value={formData.question_text}
-                    onChange={(e) => setFormData({ ...formData, question_text: e.target.value })}
+                    value={editorLanguage === 'secondary' ? formData.question_text_secondary : formData.question_text}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      [editorLanguage === 'secondary' ? 'question_text_secondary' : 'question_text']: e.target.value,
+                    })}
                     placeholder="Paste entire question with options, answer & explanation here — then click AI Parse ✨ to auto-fill all fields"
                     rows={5}
                     required
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAiParse}
-                    disabled={aiParsing || formData.question_text.trim().length < 15}
-                    className="border-accent/50 text-accent hover:bg-accent/10"
-                  >
-                    {aiParsing ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Wand2 className="w-4 h-4 mr-2" />
-                    )}
-                    {aiParsing ? 'Parsing...' : 'AI Parse ✨'}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Tip: Paste question + options + answer + explanation all at once, then click AI Parse to auto-fill everything.
-                  </p>
+                  {editorLanguage === 'primary' && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAiParse}
+                        disabled={aiParsing || formData.question_text.trim().length < 15}
+                        className="border-accent/50 text-accent hover:bg-accent/10"
+                      >
+                        {aiParsing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-4 h-4 mr-2" />
+                        )}
+                        {aiParsing ? 'Parsing...' : 'AI Parse ✨'}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Tip: Paste question + options + answer + explanation all at once, then click AI Parse to auto-fill everything.
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -932,19 +1009,19 @@ export default function Questions() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="option_a">Option A</Label>
-                    <Input id="option_a" value={formData.option_a} onChange={(e) => setFormData({ ...formData, option_a: e.target.value })} required />
+                    <Input id="option_a" value={editorLanguage === 'secondary' ? formData.option_a_secondary : formData.option_a} onChange={(e) => setFormData({ ...formData, [editorLanguage === 'secondary' ? 'option_a_secondary' : 'option_a']: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_b">Option B</Label>
-                    <Input id="option_b" value={formData.option_b} onChange={(e) => setFormData({ ...formData, option_b: e.target.value })} required />
+                    <Input id="option_b" value={editorLanguage === 'secondary' ? formData.option_b_secondary : formData.option_b} onChange={(e) => setFormData({ ...formData, [editorLanguage === 'secondary' ? 'option_b_secondary' : 'option_b']: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_c">Option C</Label>
-                    <Input id="option_c" value={formData.option_c} onChange={(e) => setFormData({ ...formData, option_c: e.target.value })} required />
+                    <Input id="option_c" value={editorLanguage === 'secondary' ? formData.option_c_secondary : formData.option_c} onChange={(e) => setFormData({ ...formData, [editorLanguage === 'secondary' ? 'option_c_secondary' : 'option_c']: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="option_d">Option D</Label>
-                    <Input id="option_d" value={formData.option_d} onChange={(e) => setFormData({ ...formData, option_d: e.target.value })} required />
+                    <Input id="option_d" value={editorLanguage === 'secondary' ? formData.option_d_secondary : formData.option_d} onChange={(e) => setFormData({ ...formData, [editorLanguage === 'secondary' ? 'option_d_secondary' : 'option_d']: e.target.value })} required />
                   </div>
                 </div>
 
@@ -971,8 +1048,11 @@ export default function Questions() {
                   </Label>
                   <Textarea
                     id="explanation"
-                    value={formData.explanation}
-                    onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                    value={editorLanguage === 'secondary' ? formData.explanation_secondary : formData.explanation}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      [editorLanguage === 'secondary' ? 'explanation_secondary' : 'explanation']: e.target.value,
+                    })}
                     placeholder="Explain why this answer is correct..."
                     rows={2}
                   />
