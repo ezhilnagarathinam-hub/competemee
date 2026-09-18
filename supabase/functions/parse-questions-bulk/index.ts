@@ -245,7 +245,7 @@ function stripNumbering(value: string): string {
 }
 
 function stripOptionLabel(value: string): string {
-  return value.replace(/^\s*\(?[A-Da-d1-4]\)?\s*[\).:\-–]?\s+/, '').trim();
+  return value.replace(/^\s*\(?[A-Da-d]\)?\s*[\).:\-–]?\s+/, '').trim();
 }
 
 function stripFences(s: string): string {

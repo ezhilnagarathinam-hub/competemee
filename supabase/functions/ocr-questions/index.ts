@@ -427,7 +427,7 @@ function stripNumbering(s: string): string {
 }
 
 function stripOptionLabel(s: string): string {
-  return s.replace(/^\s*\(?[A-Da-d1-4]\)?\s*[\).:\-–]?\s+/, '').trim();
+  return s.replace(/^\s*\(?[A-Da-d]\)?\s*[\).:\-–]?\s+/, '').trim();
 }
 
 function sanitizeQuestion(q: any): any | null {
