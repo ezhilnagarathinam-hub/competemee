@@ -23,6 +23,10 @@ interface SignupRequest {
   student_id: string | null;
   created_at: string;
   reviewed_at: string | null;
+  competition_id: string | null;
+  batch_id: string | null;
+  competitions?: { name: string } | null;
+  batches?: { name: string } | null;
 }
 
 interface ApprovedCreds {
@@ -51,7 +55,7 @@ export default function Signups() {
     try {
       const { data, error } = await (supabase as any)
         .from('student_signup_requests')
-        .select('*')
+        .select('*, competitions(name), batches(name)')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -86,6 +90,32 @@ export default function Signups() {
           .single();
         if (createError) throw createError;
         student = created;
+      }
+
+      if (req.batch_id) {
+        const { error: batchError } = await supabase
+          .from('students')
+          .update({ batch: req.batches?.name || null })
+          .eq('id', student.id)
+          .eq('organization_id', organizationId);
+        if (batchError) throw batchError;
+      }
+      if (req.competition_id) {
+        const { data: competition } = await supabase
+          .from('competitions')
+          .select('max_attempts')
+          .eq('id', req.competition_id)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        const { error: enrollmentError } = await supabase
+          .from('student_competitions')
+          .upsert({
+            student_id: student.id,
+            competition_id: req.competition_id,
+            organization_id: organizationId,
+            attempts_allowed: competition?.max_attempts ?? 1,
+          }, { onConflict: 'student_id,competition_id', ignoreDuplicates: true });
+        if (enrollmentError) throw enrollmentError;
       }
 
       const { error: updateError } = await (supabase as any)
@@ -193,6 +223,7 @@ export default function Signups() {
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Exam</TableHead>
+                    <TableHead>Test / Batch</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead>Requested</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -205,6 +236,10 @@ export default function Signups() {
                       <TableCell className="whitespace-nowrap">{req.phone}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="border-primary/40 text-primary">{req.exam}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        <div>{req.competitions?.name || 'Account only'}</div>
+                        <div className="text-muted-foreground">{req.batches?.name || 'All batches'}</div>
                       </TableCell>
                       <TableCell className="max-w-[240px] text-sm text-muted-foreground">{req.note || '—'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">

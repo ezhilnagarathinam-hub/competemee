@@ -45,6 +45,9 @@ Rules:
 - NEVER split one question across two records, and never emit a record that only holds options.
 - Put the correct answer letter in correct_answer when it is marked, given in an answer key, or stated in the explanation.
 - Put the explanation / solution text in "explanation" (never inside the question or an option).
+- Transcribe every visible word exactly. Never summarize, shorten, paraphrase, translate, or silently correct the source.
+- Preserve complete English, Tamil, Hindi, punctuation, formulas, statement lists, and explanation paragraphs in their original order.
+- If any word is unclear, preserve the closest visible transcription rather than omitting the surrounding sentence.
 - Strip leading question numbers ("1.", "Q1)", "Question 5:", "Q.No.7", "(12)") and labels like "Passage 1", "Case 3:". Keep statement numerals (I., II., 1., 2.) that are part of the question body.
 - Record the printed question number in source_question_number. Never use statement numerals inside the question body.
 - Preserve Tamil / Hindi / math characters exactly.
@@ -211,7 +214,7 @@ async function callAi(
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [{ role: 'user', content }],
         max_tokens: 16000,
         response_format: {
@@ -424,7 +427,7 @@ function stripNumbering(s: string): string {
 }
 
 function stripOptionLabel(s: string): string {
-  return s.replace(/^\s*\(?[A-Da-d1-4]\)?\s*[\).:\-–]?\s+/, '').trim();
+  return s.replace(/^\s*\(?[A-Da-d]\)?\s*[\).:\-–]?\s+/, '').trim();
 }
 
 function sanitizeQuestion(q: any): any | null {

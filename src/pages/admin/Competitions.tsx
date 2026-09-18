@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,9 @@ export default function Competitions() {
   const [notifyComp, setNotifyComp] = useState<Competition | null>(null);
   const [notifyRecipients, setNotifyRecipients] = useState<WhatsAppRecipient[]>([]);
   const [notifyLoading, setNotifyLoading] = useState(false);
+  const [batches, setBatches] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
+  const [newBatchName, setNewBatchName] = useState('');
 
   async function openNotify(comp: Competition) {
     setNotifyComp(comp);
@@ -68,11 +72,44 @@ export default function Competitions() {
     max_attempts: 1,
     primary_color: '#0D9488',
     secondary_color: '#F59E0B',
+    enrollment_requires_approval: true,
   });
 
   useEffect(() => {
     fetchCompetitions();
+    fetchBatches();
   }, [organizationId]);
+
+  async function fetchBatches() {
+    if (!organizationId) return;
+    const { data, error } = await supabase
+      .from('batches')
+      .select('id, name')
+      .eq('organization_id', organizationId)
+      .order('name');
+    if (error) {
+      toast.error('Failed to load batches');
+      return;
+    }
+    setBatches(data || []);
+  }
+
+  async function createBatch() {
+    const name = newBatchName.trim();
+    if (!organizationId || !name) return;
+    const { data, error } = await supabase
+      .from('batches')
+      .insert({ name, organization_id: organizationId })
+      .select('id, name')
+      .single();
+    if (error) {
+      toast.error(error.message.includes('duplicate') ? 'That batch already exists' : 'Failed to create batch');
+      return;
+    }
+    setBatches((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setSelectedBatchIds((current) => [...current, data.id]);
+    setNewBatchName('');
+  }
 
   async function fetchCompetitions() {
     if (!organizationId) return;
@@ -104,6 +141,7 @@ export default function Competitions() {
     e.preventDefault();
     
     try {
+      let competitionId = editingId;
       if (editingId) {
         const submitData = {
           ...formData,
@@ -121,11 +159,33 @@ export default function Competitions() {
           ...formData,
           end_date: formData.end_date || formData.date || null,
         };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('competitions')
-          .insert([{ ...submitData, organization_id: organizationId }]);
+          .insert([{ ...submitData, organization_id: organizationId }])
+          .select('id')
+          .single();
         if (error) throw error;
+        competitionId = data.id;
         toast.success('Competition created successfully');
+      }
+
+      if (competitionId) {
+        const { error: clearError } = await supabase
+          .from('competition_batches')
+          .delete()
+          .eq('competition_id', competitionId)
+          .eq('organization_id', organizationId);
+        if (clearError) throw clearError;
+        if (selectedBatchIds.length > 0) {
+          const { error: batchError } = await supabase.from('competition_batches').insert(
+            selectedBatchIds.map((batchId) => ({
+              organization_id: organizationId,
+              competition_id: competitionId as string,
+              batch_id: batchId,
+            })),
+          );
+          if (batchError) throw batchError;
+        }
       }
       
       setDialogOpen(false);
@@ -232,13 +292,16 @@ export default function Competitions() {
       max_attempts: 1,
       primary_color: '#0D9488',
       secondary_color: '#F59E0B',
+      enrollment_requires_approval: true,
     });
+    setSelectedBatchIds([]);
+    setNewBatchName('');
     setDurationUnit('minutes');
     setDurationValue(60);
     setEditingId(null);
   }
 
-  function openEdit(comp: Competition) {
+  async function openEdit(comp: Competition) {
     setFormData({
       name: comp.name,
       description: comp.description || '',
@@ -250,7 +313,14 @@ export default function Competitions() {
       max_attempts: comp.max_attempts ?? 1,
       primary_color: comp.primary_color,
       secondary_color: comp.secondary_color,
+      enrollment_requires_approval: comp.enrollment_requires_approval ?? true,
     });
+    const { data } = await supabase
+      .from('competition_batches')
+      .select('batch_id')
+      .eq('competition_id', comp.id)
+      .eq('organization_id', organizationId);
+    setSelectedBatchIds((data || []).map((row) => row.batch_id));
     // Set duration display
     if (comp.duration_minutes >= 60 && comp.duration_minutes % 60 === 0) {
       setDurationUnit('hours');
@@ -327,6 +397,52 @@ export default function Competitions() {
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     min={formData.date}
                   />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label htmlFor="approval-required">Admin approval for enrollment</Label>
+                    <p className="text-xs text-muted-foreground">Turn off to create credentials and test access immediately.</p>
+                  </div>
+                  <Switch
+                    id="approval-required"
+                    checked={formData.enrollment_requires_approval}
+                    onCheckedChange={(checked) => setFormData({ ...formData, enrollment_requires_approval: checked })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div>
+                  <Label>Eligible Batches</Label>
+                  <p className="text-xs text-muted-foreground">Leave all unchecked to allow every batch.</p>
+                </div>
+                {batches.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {batches.map((batch) => (
+                      <label key={batch.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={selectedBatchIds.includes(batch.id)}
+                          onCheckedChange={(checked) => setSelectedBatchIds((current) =>
+                            checked ? [...current, batch.id] : current.filter((id) => id !== batch.id)
+                          )}
+                        />
+                        {batch.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    value={newBatchName}
+                    onChange={(event) => setNewBatchName(event.target.value)}
+                    placeholder="Create a new batch"
+                  />
+                  <Button type="button" variant="outline" onClick={createBatch} disabled={!newBatchName.trim()}>
+                    Add
+                  </Button>
                 </div>
               </div>
 

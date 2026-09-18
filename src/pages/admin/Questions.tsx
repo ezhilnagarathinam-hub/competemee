@@ -652,9 +652,7 @@ export default function Questions() {
       let addedCount = 0;
       for (const q of extractedQuestions) {
         const nextNumber = questions.length + addedCount + 1;
-        const { error } = await supabase
-          .from('questions')
-          .insert([{
+        const payload: any = {
             competition_id: selectedCompetition,
             organization_id: organizationId,
             question_number: nextNumber,
@@ -666,7 +664,19 @@ export default function Questions() {
             correct_answer: q.correct_answer || 'A',
             marks: q.marks || 1,
             explanation: q.explanation || null,
-          }]);
+        };
+        if (q.secondary_language === 'tamil' || q.secondary_language === 'hindi') {
+          payload.secondary_language = q.secondary_language;
+          payload.question_text_secondary = q.question_text_secondary || null;
+          payload.option_a_secondary = q.option_a_secondary || null;
+          payload.option_b_secondary = q.option_b_secondary || null;
+          payload.option_c_secondary = q.option_c_secondary || null;
+          payload.option_d_secondary = q.option_d_secondary || null;
+          payload.explanation_secondary = q.explanation_secondary || null;
+        }
+        const { error } = await supabase
+          .from('questions')
+          .insert([payload]);
         
         if (!error) addedCount++;
       }

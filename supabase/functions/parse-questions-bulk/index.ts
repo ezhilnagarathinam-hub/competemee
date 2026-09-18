@@ -245,7 +245,7 @@ function stripNumbering(value: string): string {
 }
 
 function stripOptionLabel(value: string): string {
-  return value.replace(/^\s*\(?[A-Da-d1-4]\)?\s*[\).:\-–]?\s+/, '').trim();
+  return value.replace(/^\s*\(?[A-Da-d]\)?\s*[\).:\-–]?\s+/, '').trim();
 }
 
 function stripFences(s: string): string {
@@ -377,6 +377,7 @@ function splitIntoChunks(text: string, maxLen: number): string[] {
 const SYSTEM_PROMPT = `You are an extremely careful MCQ exam paper parser.
 
 YOUR ONE JOB: emit a JSON object that exactly matches the provided schema. Every question MUST have all 4 options filled in. NEVER emit a question with empty options. NEVER split one question's options across two records.
+Transcribe every source word exactly. Never summarize, shorten, paraphrase, translate, or omit explanation text. Preserve English, Tamil, Hindi, punctuation, formulas, and statement lists in their original order.
 
 CRITICAL RULES:
 1. ONE record per question. If you see 4 options labelled A/B/C/D (or 1/2/3/4, or a/b/c/d), they ALL belong to the SAME question_text directly above them. Do NOT create a new question just because you reached the next paragraph.
@@ -414,7 +415,7 @@ ${text}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
@@ -472,9 +473,9 @@ function orderAndLimitQuestions(list: any[], expectedCount: number | null): any[
 
 async function parseChunkFallback(text: string, apiKey: string): Promise<any[]> {
   const userPrompt = `Extract every question from the text below into JSON of the form
-{"questions":[{"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_answer":"A|B|C|D|null","explanation":"...|null","question_text_secondary":"...","option_a_secondary":"...","option_b_secondary":"...","option_c_secondary":"...","option_d_secondary":"...","explanation_secondary":"...","secondary_language":"tamil|hindi|"}]}
+{"questions":[{"source_question_number":1,"question_text":"...","option_a":"...","option_b":"...","option_c":"...","option_d":"...","correct_answer":"A|B|C|D|null","explanation":"...|null","question_text_secondary":"...","option_a_secondary":"...","option_b_secondary":"...","option_c_secondary":"...","option_d_secondary":"...","explanation_secondary":"...","secondary_language":"tamil|hindi|"}]}
 
-All 4 options must be present in EVERY question. Never split one question's options into two records. Strip leading question numbers. Detect bilingual pairs (English + Tamil OR English + Hindi) and pair them in the same record using the *_secondary fields.
+All 4 options must be present in EVERY question. Never split one question's options into two records. Strip leading question numbers but copy them into source_question_number. Detect bilingual pairs (English + Tamil OR English + Hindi) and pair them in the same record using the *_secondary fields. Transcribe every word exactly without summarizing or omitting explanations.
 
 Return ONLY JSON.
 
@@ -489,7 +490,7 @@ ${text}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [{ role: 'user', content: userPrompt }],
         max_tokens: 16000,
         response_format: { type: 'json_object' },
