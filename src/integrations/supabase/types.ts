@@ -107,6 +107,52 @@ export type Database = {
           },
         ]
       }
+      competition_batches: {
+        Row: {
+          batch_id: string
+          competition_id: string
+          created_at: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          batch_id: string
+          competition_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          batch_id?: string
+          competition_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_batches_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competition_result_summaries: {
         Row: {
           attempted_questions: number
@@ -216,6 +262,7 @@ export type Database = {
           duration_minutes: number
           end_date: string | null
           end_time: string
+          enrollment_requires_approval: boolean
           id: string
           is_active: boolean | null
           max_attempts: number
@@ -236,6 +283,7 @@ export type Database = {
           duration_minutes?: number
           end_date?: string | null
           end_time: string
+          enrollment_requires_approval?: boolean
           id?: string
           is_active?: boolean | null
           max_attempts?: number
@@ -256,6 +304,7 @@ export type Database = {
           duration_minutes?: number
           end_date?: string | null
           end_time?: string
+          enrollment_requires_approval?: boolean
           id?: string
           is_active?: boolean | null
           max_attempts?: number
@@ -779,6 +828,8 @@ export type Database = {
       }
       student_signup_requests: {
         Row: {
+          batch_id: string | null
+          competition_id: string | null
           created_at: string
           exam: string
           id: string
@@ -792,6 +843,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          batch_id?: string | null
+          competition_id?: string | null
           created_at?: string
           exam: string
           id?: string
@@ -805,6 +858,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          batch_id?: string | null
+          competition_id?: string | null
           created_at?: string
           exam?: string
           id?: string
@@ -818,6 +873,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_signup_requests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_signup_requests_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_signup_requests_organization_id_fkey"
             columns: ["organization_id"]
