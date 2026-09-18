@@ -601,7 +601,7 @@ function StudentResults() {
     try {
       toast.loading('Preparing your result…', { id: 'result-pdf' });
       const { rows, correctMarks, negativeMarks, maxMarks } = await loadDetail(result);
-      downloadResultPDF({
+      await downloadResultPDF({
         studentName: studentName || 'Player',
         competitionName: result.competitions?.name || result.competition_name || 'Competition',
         startedAt: result.started_at,
