@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Zap, User, Phone, GraduationCap, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,50 @@ export default function StudentSignup() {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [organizationId, setOrganizationId] = useState('');
+  const [competitions, setCompetitions] = useState<Array<{ id: string; name: string; enrollment_requires_approval: boolean }>>([]);
+  const [competitionId, setCompetitionId] = useState('');
+  const [batches, setBatches] = useState<Array<{ id: string; name: string }>>([]);
+  const [batchId, setBatchId] = useState('');
+  const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null);
+
+  useEffect(() => {
+    async function loadEnrollmentOptions() {
+      const { data: organization } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', 'eadreamss')
+        .eq('status', 'active')
+        .maybeSingle();
+      if (!organization) return;
+      setOrganizationId(organization.id);
+      const { data } = await supabase
+        .from('competitions')
+        .select('id, name, enrollment_requires_approval')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('date', { ascending: false });
+      setCompetitions(data || []);
+    }
+    loadEnrollmentOptions();
+  }, []);
+
+  useEffect(() => {
+    async function loadBatches() {
+      setBatchId('');
+      if (!competitionId) {
+        setBatches([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('competition_batches')
+        .select('batch_id, batches(id, name)')
+        .eq('competition_id', competitionId);
+      const options = (data || []).map((row: any) => row.batches).filter(Boolean);
+      setBatches(options);
+    }
+    loadBatches();
+  }, [competitionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,57 +92,34 @@ export default function StudentSignup() {
       toast.error('Please select the exam you are preparing for');
       return;
     }
+    if (!competitionId) {
+      toast.error('Please select a test');
+      return;
+    }
+    if (batches.length > 0 && !batchId) {
+      toast.error('Please select your batch');
+      return;
+    }
 
     setLoading(true);
     try {
-      const { data: organization, error: organizationError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('slug', 'eadreamss')
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (organizationError || !organization) {
-        throw organizationError || new Error('Organization is unavailable');
-      }
-
-      // Already a player with this phone?
-      const { data: existing } = await supabase
-        .from('students')
-        .select('id')
-        .eq('phone', cleanPhone)
-        .eq('organization_id', organization.id)
-        .maybeSingle();
-
-      if (existing) {
-        toast.error('An account already exists for this phone number. Please log in.');
-        setLoading(false);
-        return;
-      }
-
-      const { data: pending } = await (supabase as any)
-        .from('student_signup_requests')
-        .select('id, status')
-        .eq('phone', cleanPhone)
-        .eq('status', 'pending')
-        .eq('organization_id', organization.id)
-        .maybeSingle();
-
-      if (pending) {
-        setDone(true);
-        setLoading(false);
-        return;
-      }
-
-      const { error } = await (supabase as any).from('student_signup_requests').insert({
-        name: cleanName,
-        phone: cleanPhone,
-        exam,
-        note: note.trim() || null,
-        organization_id: organization.id,
+      if (!organizationId) throw new Error('Organization is unavailable');
+      const { data, error } = await supabase.rpc('register_student_for_competition', {
+        p_organization_id: organizationId,
+        p_competition_id: competitionId,
+        p_batch_id: batchId || null,
+        p_name: cleanName,
+        p_phone: cleanPhone,
+        p_exam: exam,
+        p_note: note.trim() || undefined,
       });
-
       if (error) throw error;
+      const result = data as { status?: string; username?: string; password?: string } | null;
+      if (result?.status === 'created' && result.username && result.password) {
+        setCredentials({ username: result.username, password: result.password });
+      } else if (result?.status === 'existing') {
+        toast.success('This test is now available in your existing account');
+      }
       setDone(true);
     } catch (error) {
       console.error('Signup request failed:', error);
@@ -130,9 +151,15 @@ export default function StudentSignup() {
               <CheckCircle2 className="w-16 h-16 mx-auto text-accent" />
               <h2 className="text-xl font-bold font-display">REQUEST SUBMITTED</h2>
               <p className="text-sm text-muted-foreground">
-                Your request is waiting for admin approval. Once approved, your username and password
-                will be sent to your WhatsApp / phone number.
+                {credentials ? 'Your account is ready. Save these credentials before continuing.' :
+                  'Your request is waiting for admin approval. Your credentials will be shared after approval.'}
               </p>
+              {credentials && (
+                <div className="rounded-md border border-border bg-muted/40 p-4 text-left space-y-2">
+                  <p>Username: <strong className="font-mono text-primary">{credentials.username}</strong></p>
+                  <p>Password: <strong className="font-mono text-primary">{credentials.password}</strong></p>
+                </div>
+              )}
               <Button variant="outline" className="w-full" onClick={() => navigate('/student/login')}>
                 Go to Login
               </Button>
@@ -142,7 +169,7 @@ export default function StudentSignup() {
               <CardHeader className="text-center">
                 <CardTitle className="font-display">SIGN UP</CardTitle>
                 <CardDescription>
-                  Admin approval is required. Your login credentials are sent to you after approval.
+                  Choose a live test and batch. Approval depends on that test's enrollment settings.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -162,6 +189,30 @@ export default function StudentSignup() {
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Test *</Label>
+                    <Select value={competitionId} onValueChange={setCompetitionId}>
+                      <SelectTrigger className="bg-background/50"><SelectValue placeholder="Select a live test" /></SelectTrigger>
+                      <SelectContent>
+                        {competitions.map((competition) => (
+                          <SelectItem key={competition.id} value={competition.id}>{competition.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {batches.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Batch *</Label>
+                      <Select value={batchId} onValueChange={setBatchId}>
+                        <SelectTrigger className="bg-background/50"><SelectValue placeholder="Select your batch" /></SelectTrigger>
+                        <SelectContent>
+                          {batches.map((batch) => <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number (WhatsApp) *</Label>
@@ -212,7 +263,7 @@ export default function StudentSignup() {
                     disabled={loading}
                     className="w-full gradient-primary text-primary-foreground shadow-primary hover:opacity-90 compete-btn h-12"
                   >
-                    {loading ? 'Submitting...' : 'REQUEST ACCOUNT'}
+                    {loading ? 'Submitting...' : 'ENROLL'}
                   </Button>
                 </form>
 

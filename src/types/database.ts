@@ -22,6 +22,7 @@ export interface Competition {
   show_results: boolean;
   show_leaderboard: boolean;
   show_detailed_results: boolean;
+  enrollment_requires_approval: boolean;
   created_at: string;
   updated_at: string;
 }
