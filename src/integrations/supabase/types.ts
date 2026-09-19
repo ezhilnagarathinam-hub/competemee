@@ -257,11 +257,11 @@ export type Database = {
       competitions: {
         Row: {
           created_at: string | null
-          date: string
+          date: string | null
           description: string | null
           duration_minutes: number
           end_date: string | null
-          end_time: string
+          end_time: string | null
           enrollment_requires_approval: boolean
           id: string
           is_active: boolean | null
@@ -269,20 +269,21 @@ export type Database = {
           name: string
           organization_id: string | null
           primary_color: string | null
+          schedule_type: string
           secondary_color: string | null
           show_detailed_results: boolean | null
           show_leaderboard: boolean | null
           show_results: boolean | null
-          start_time: string
+          start_time: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          date: string
+          date?: string | null
           description?: string | null
           duration_minutes?: number
           end_date?: string | null
-          end_time: string
+          end_time?: string | null
           enrollment_requires_approval?: boolean
           id?: string
           is_active?: boolean | null
@@ -290,20 +291,21 @@ export type Database = {
           name: string
           organization_id?: string | null
           primary_color?: string | null
+          schedule_type?: string
           secondary_color?: string | null
           show_detailed_results?: boolean | null
           show_leaderboard?: boolean | null
           show_results?: boolean | null
-          start_time: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          date?: string
+          date?: string | null
           description?: string | null
           duration_minutes?: number
           end_date?: string | null
-          end_time?: string
+          end_time?: string | null
           enrollment_requires_approval?: boolean
           id?: string
           is_active?: boolean | null
@@ -311,11 +313,12 @@ export type Database = {
           name?: string
           organization_id?: string | null
           primary_color?: string | null
+          schedule_type?: string
           secondary_color?: string | null
           show_detailed_results?: boolean | null
           show_leaderboard?: boolean | null
           show_results?: boolean | null
-          start_time?: string
+          start_time?: string | null
           updated_at?: string | null
         }
         Relationships: [

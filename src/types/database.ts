@@ -10,10 +10,11 @@ export interface Competition {
   id: string;
   name: string;
   description: string | null;
-  date: string;
+  date: string | null;
   end_date: string | null;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
+  schedule_type: 'lifetime' | 'date_range' | 'timed';
   duration_minutes: number;
   max_attempts: number;
   primary_color: string;

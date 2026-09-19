@@ -54,6 +54,6 @@ export function serverTimeSynced(): boolean {
 /** Build a Date for a competition's date (yyyy-mm-dd) + time (HH:mm[:ss]) in local time. */
 export function competitionDateTime(dateStr: string, timeStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
-  const [h = 0, min = 0] = (timeStr || '00:00').split(':').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1, h, min, 0, 0);
+  const [h = 0, min = 0, sec = 0] = (timeStr || '00:00').split(':').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, h, min, sec, 0);
 }

@@ -6,4 +6,4 @@
 - Let students switch between available question languages at any time during a test (complete)
 - Add per-competition enrollment approval choice and automatic student credentials (complete)
 - Add per-competition batch access with batch selection during student enrollment (complete)
-- Add flexible competition access schedules: lifetime, date range, or exact timed window
+- Add flexible competition access schedules: lifetime, date range, or exact timed window (complete)
