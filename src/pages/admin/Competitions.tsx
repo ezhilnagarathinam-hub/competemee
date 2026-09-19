@@ -414,7 +414,7 @@ export default function Competitions() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value, end_date: formData.end_date || e.target.value })}
-                    required={formData.schedule_type !== 'lifetime'}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
