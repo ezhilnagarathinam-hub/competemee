@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import type { Competition, StudentCompetition } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 import { formatTime12, formatTimestampShort, formatDurationBetween } from '@/lib/timeFormat';
-import { serverNow, syncServerTime, competitionDateTime } from '@/lib/serverTime';
+import { serverNow, syncServerTime } from '@/lib/serverTime';
+import { competitionWindow, isCompetitionBeforeStart, isCompetitionWindowOpen } from '@/lib/competitionSchedule';
 import { buildResultRows, downloadResultPDF } from '@/lib/exportResult';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -162,11 +163,7 @@ export default function StudentDashboard() {
     if (comp.studentStatus?.is_locked) return false;
     if (comp.studentStatus?.has_submitted) return false;
     
-    const now = serverNow();
-    const windowStart = competitionDateTime(comp.date, comp.start_time);
-    const windowEnd = competitionDateTime(comp.end_date || comp.date, comp.end_time);
-
-    return now >= windowStart && now <= windowEnd;
+    return isCompetitionWindowOpen(comp, serverNow());
   }
 
   function attemptsLeft(comp: CompetitionWithStatus): number {
@@ -177,9 +174,7 @@ export default function StudentDashboard() {
   }
 
   function windowOpen(comp: CompetitionWithStatus): boolean {
-    const now = serverNow();
-    return now >= competitionDateTime(comp.date, comp.start_time)
-      && now <= competitionDateTime(comp.end_date || comp.date, comp.end_time);
+    return isCompetitionWindowOpen(comp, serverNow());
   }
 
   async function handleRetake(comp: CompetitionWithStatus) {
@@ -208,7 +203,7 @@ export default function StudentDashboard() {
   }
 
   function isBeforeStart(comp: CompetitionWithStatus): boolean {
-    return serverNow() < competitionDateTime(comp.date, comp.start_time);
+    return isCompetitionBeforeStart(comp, serverNow());
   }
 
   function formatDuration(minutes: number): string {
@@ -230,11 +225,12 @@ export default function StudentDashboard() {
       const comp = competitions.find((c) => c.id === competitionId);
       if (comp) {
         const now = serverNow();
-        if (now < competitionDateTime(comp.date, comp.start_time)) {
+        const { start, end } = competitionWindow(comp);
+        if (start && now < start) {
           toast.error('This test has not started yet.');
           return;
         }
-        if (now > competitionDateTime(comp.end_date || comp.date, comp.end_time)) {
+        if (end && now > end) {
           toast.error('This test window has closed.');
           fetchCompetitions();
           return;
@@ -330,15 +326,16 @@ export default function StudentDashboard() {
                       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          {comp.end_date && comp.end_date !== comp.date
+                           {comp.schedule_type === 'lifetime' ? 'Lifetime access' : comp.date && comp.end_date && comp.end_date !== comp.date
                             ? `${format(parseISO(comp.date), 'MMM dd')} – ${format(parseISO(comp.end_date), 'MMM dd, yyyy')}`
-                            : format(parseISO(comp.date), 'MMM dd, yyyy')
+                             : comp.date ? format(parseISO(comp.date), 'MMM dd, yyyy') : 'Any date'
                           }
                         </span>
-                        <span className="flex items-center gap-1">
+                         {comp.schedule_type === 'timed' && comp.start_time && comp.end_time && <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           {formatTime12(comp.start_time)} - {formatTime12(comp.end_time)}
-                        </span>
+                         </span>}
+                         {comp.schedule_type === 'date_range' && <span>Any time during selected dates</span>}
                         <span>{formatDuration(comp.duration_minutes)}</span>
                       </div>
                       {/* Countdown timer */}
@@ -356,7 +353,7 @@ export default function StudentDashboard() {
                               <span className="font-bold font-display">NOT YET STARTED</span>
                             </div>
                             <p className="text-[10px] text-muted-foreground">
-                              Test opens on {format(parseISO(comp.date), 'MMM dd')} at {formatTime12(comp.start_time)}
+                               Test opens on {comp.date ? format(parseISO(comp.date), 'MMM dd') : 'the scheduled date'}{comp.schedule_type === 'timed' && comp.start_time ? ` at ${formatTime12(comp.start_time)}` : ''}
                             </p>
                           </div>
                         ) : (
@@ -462,17 +459,22 @@ function CountdownTimer({ comp }: { comp: CompetitionWithStatus }) {
   useEffect(() => {
     const tick = () => {
       const now = serverNow();
-      const startTime = competitionDateTime(comp.date, comp.start_time);
-      const endTime = competitionDateTime(comp.end_date || comp.date, comp.end_time);
+      const { start: startTime, end: endTime } = competitionWindow(comp);
 
-      if (now < startTime) {
+      if (!startTime && !endTime) {
+        setLabel('');
+        setCountdown('');
+        return;
+      }
+
+      if (startTime && now < startTime) {
         const diff = Math.floor((startTime.getTime() - now.getTime()) / 1000);
         const h = Math.floor(diff / 3600);
         const m = Math.floor((diff % 3600) / 60);
         const s = diff % 60;
         setLabel('Starts in');
         setCountdown(`${h > 0 ? h + 'h ' : ''}${m}m ${s}s`);
-      } else if (now >= startTime && now <= endTime) {
+      } else if (endTime && now <= endTime) {
         const diff = Math.floor((endTime.getTime() - now.getTime()) / 1000);
         const h = Math.floor(diff / 3600);
         const m = Math.floor((diff % 3600) / 60);

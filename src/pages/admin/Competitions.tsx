@@ -64,6 +64,7 @@ export default function Competitions() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    schedule_type: 'lifetime' as 'lifetime' | 'date_range' | 'timed',
     date: '',
     end_date: '',
     start_time: '',
@@ -145,7 +146,10 @@ export default function Competitions() {
       if (editingId) {
         const submitData = {
           ...formData,
-          end_date: formData.end_date || formData.date || null,
+          date: formData.schedule_type === 'lifetime' ? null : formData.date || null,
+          end_date: formData.schedule_type === 'lifetime' ? null : formData.end_date || formData.date || null,
+          start_time: formData.schedule_type === 'timed' ? formData.start_time || null : null,
+          end_time: formData.schedule_type === 'timed' ? formData.end_time || null : null,
         };
         const { error } = await supabase
           .from('competitions')
@@ -157,7 +161,10 @@ export default function Competitions() {
       } else {
         const submitData = {
           ...formData,
-          end_date: formData.end_date || formData.date || null,
+          date: formData.schedule_type === 'lifetime' ? null : formData.date || null,
+          end_date: formData.schedule_type === 'lifetime' ? null : formData.end_date || formData.date || null,
+          start_time: formData.schedule_type === 'timed' ? formData.start_time || null : null,
+          end_time: formData.schedule_type === 'timed' ? formData.end_time || null : null,
         };
         const { data, error } = await supabase
           .from('competitions')
@@ -284,6 +291,7 @@ export default function Competitions() {
     setFormData({
       name: '',
       description: '',
+      schedule_type: 'lifetime',
       date: '',
       end_date: '',
       start_time: '',
@@ -305,10 +313,11 @@ export default function Competitions() {
     setFormData({
       name: comp.name,
       description: comp.description || '',
-      date: comp.date,
-      end_date: comp.end_date || comp.date,
-      start_time: comp.start_time,
-      end_time: comp.end_time,
+      schedule_type: comp.schedule_type || 'timed',
+      date: comp.date || '',
+      end_date: comp.end_date || comp.date || '',
+      start_time: comp.start_time || '',
+      end_time: comp.end_time || '',
       duration_minutes: comp.duration_minutes,
       max_attempts: comp.max_attempts ?? 1,
       primary_color: comp.primary_color,
@@ -377,7 +386,27 @@ export default function Competitions() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Access Schedule</Label>
+                <Select
+                  value={formData.schedule_type}
+                  onValueChange={(value: 'lifetime' | 'date_range' | 'timed') => setFormData((current) => ({ ...current, schedule_type: value }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lifetime">Lifetime — access anytime</SelectItem>
+                    <SelectItem value="date_range">Date range — any time on selected dates</SelectItem>
+                    <SelectItem value="timed">Exact date &amp; time</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {formData.schedule_type === 'lifetime' && 'Available on any date while the competition is active.'}
+                  {formData.schedule_type === 'date_range' && 'Available all day between the selected dates.'}
+                  {formData.schedule_type === 'timed' && 'Available only inside the selected date and time window.'}
+                </p>
+              </div>
+
+              {formData.schedule_type !== 'lifetime' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Start Date</Label>
                   <Input
@@ -385,7 +414,7 @@ export default function Competitions() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value, end_date: formData.end_date || e.target.value })}
-                    required
+                    required={formData.schedule_type !== 'lifetime'}
                   />
                 </div>
                 <div className="space-y-2">
@@ -398,7 +427,7 @@ export default function Competitions() {
                     min={formData.date}
                   />
                 </div>
-              </div>
+              </div>}
 
               <div className="space-y-3 rounded-md border border-border p-3">
                 <div className="flex items-center justify-between gap-4">
@@ -446,7 +475,7 @@ export default function Competitions() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {formData.schedule_type === 'timed' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Duration</Label>
                   <div className="flex gap-2">
@@ -508,7 +537,7 @@ export default function Competitions() {
                   </div>
                   <p className="text-xs text-muted-foreground">Players can retake the test this many times (per-player overrides in Students).</p>
                 </div>
-              </div>
+              </div>}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -610,18 +639,19 @@ export default function Competitions() {
                     {comp.description && (
                       <p className="text-sm text-muted-foreground mb-3">{comp.description}</p>
                     )}
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {comp.end_date && comp.end_date !== comp.date
+                        {comp.schedule_type === 'lifetime' ? 'Lifetime access' : comp.date && comp.end_date && comp.end_date !== comp.date
                           ? `${format(new Date(comp.date), 'MMM dd')} – ${format(new Date(comp.end_date), 'MMM dd, yyyy')}`
-                          : format(new Date(comp.date), 'MMM dd, yyyy')
+                          : comp.date ? format(new Date(comp.date), 'MMM dd, yyyy') : 'Any date'
                         }
                       </span>
-                      <span className="flex items-center gap-1">
+                      {comp.schedule_type === 'timed' && comp.start_time && comp.end_time && <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         {formatTime12(comp.start_time)} - {formatTime12(comp.end_time)}
-                      </span>
+                      </span>}
+                      {comp.schedule_type === 'date_range' && <span>Any time during selected dates</span>}
                       <span>{formatDuration(comp.duration_minutes)}</span>
                     </div>
                   </div>

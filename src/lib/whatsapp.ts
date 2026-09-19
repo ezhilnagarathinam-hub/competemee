@@ -29,10 +29,11 @@ export function credentialsMessage(c: { name: string; username: string; password
 
 export interface TestLikeCompetition {
   name: string;
-  date: string;
+  date: string | null;
   end_date?: string | null;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
+  schedule_type: 'lifetime' | 'date_range' | 'timed';
   duration_minutes: number;
 }
 
@@ -55,19 +56,20 @@ function prettyDuration(minutes: number): string {
 
 /** Message 2 — test is live / reminder */
 export function testLiveMessage(name: string, comp: TestLikeCompetition): string {
-  const dateLine =
-    comp.end_date && comp.end_date !== comp.date
-      ? `${prettyDate(comp.date)} – ${prettyDate(comp.end_date)}`
-      : prettyDate(comp.date);
-
+  const scheduleLines = comp.schedule_type === 'lifetime'
+    ? 'Access: Available anytime while the test is active\n'
+    : comp.schedule_type === 'date_range' && comp.date
+      ? `Access dates: ${comp.end_date && comp.end_date !== comp.date ? `${prettyDate(comp.date)} – ${prettyDate(comp.end_date)}` : prettyDate(comp.date)}\n`
+      : comp.date && comp.start_time && comp.end_time
+        ? `Date: ${comp.end_date && comp.end_date !== comp.date ? `${prettyDate(comp.date)} – ${prettyDate(comp.end_date)}` : prettyDate(comp.date)}\nWindow: ${formatTime12(comp.start_time)} – ${formatTime12(comp.end_time)}\n`
+        : '';
   return (
     `Hi ${name}, your Compete Me test is scheduled!\n\n` +
     `Test: ${comp.name}\n` +
-    `Date: ${dateLine}\n` +
-    `Window: ${formatTime12(comp.start_time)} – ${formatTime12(comp.end_time)}\n` +
+    scheduleLines +
     `Duration: ${prettyDuration(comp.duration_minutes)}\n\n` +
-    `Log in and start on time: ${origin()}/student/login\n\n` +
-    `The timer is server-controlled, so please join within the window. All the best!`
+    `Log in to start: ${origin()}/student/login\n\n` +
+    `Your attempt timer starts when you begin. All the best!`
   );
 }
 
